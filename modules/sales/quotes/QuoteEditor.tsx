@@ -128,12 +128,15 @@ const LineItemCard = React.memo(({
   defaultVatRate,
   unitOptions,
   vatOptions,
-  docLength
+  docLength,
+  currency,
+  onCurrencyChange
 }: any) => {
   const vat = Number(item.vatRate ?? defaultVatRate);
   const net = calcLineNet(item);
   const vatAmt = calcLineVat(item, defaultVatRate);
   const gross = calcLineGross(item, defaultVatRate);
+  const formatWithCurrency = (value: number) => `${currency} ${formatMoney(value)}`;
 
   const titleRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -179,30 +182,36 @@ const LineItemCard = React.memo(({
         className="flex-1 p-3 min-w-0 cursor-pointer flex flex-col justify-between"
         onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
       >
-        {/* Row 1: Title */}
-        <div className="font-black text-zinc-900 text-sm leading-snug break-words mb-2">{item.description || 'Neue Position'}</div>
+        {/* Row 1: Title & Amount */}
+        <div className="flex justify-between items-start mb-1.5 gap-4">
+          <div className="flex-1 min-w-0 truncate">
+            {item.productCode && (
+              <span className="text-[10px] font-mono bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded mr-2 border border-zinc-200">
+                {item.productCode}
+              </span>
+            )}
+            <span className="font-bold text-sm text-zinc-900">{item.description || 'Neue Position'}</span>
+          </div>
+          <span className="font-bold text-sm whitespace-nowrap text-zinc-900">{formatWithCurrency(gross)}</span>
+        </div>
 
-        {/* Row 2: Details */}
-        <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-500 font-medium font-mono leading-relaxed">
-          <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-700 font-bold">
+        {/* Row 2: Metadata */}
+        <div className="flex items-center gap-2 text-[11px] overflow-hidden whitespace-nowrap">
+          <span className="px-1.5 py-0.5 rounded font-bold bg-zinc-50 text-zinc-600">
             {Number(item.quantity || 0).toFixed(2)} {item.unit}
           </span>
           <span className="text-zinc-300">×</span>
-          <span>{formatMoney(Number(item.price || 0))}</span>
-          {item.discount ? <span className="text-orange-600 font-bold ml-1">(-{item.discount}%)</span> : null}
+          <span className="text-zinc-400">{formatWithCurrency(Number(item.price || 0))}</span>
+          {item.discount ? (
+            <span className="text-orange-600 font-bold bg-orange-50 px-1 rounded ml-1">-{item.discount}%</span>
+          ) : null}
           <span className="text-zinc-300 mx-1">|</span>
-          <span className="text-zinc-400">Netto {formatMoney(net)}</span>
-        </div>
-
-        {/* Row 3: Totals */}
-        <div className="mt-2 pt-2 border-t border-zinc-50 flex justify-between items-end">
-          <div className="text-[10px] font-bold uppercase text-zinc-400">
-            MWST {vat.toFixed(1)}% <span className="hidden sm:inline text-zinc-300 ml-1">({formatMoney(vatAmt)})</span>
-            {item.isOptional && (
-              <span className="ml-2 px-1.5 py-0.5 rounded border border-zinc-200 bg-white text-zinc-500">Optional</span>
-            )}
-          </div>
-          <div className="text-lg font-black text-zinc-900 leading-none">{formatMoney(gross)}</div>
+          <span className="text-zinc-400">MWST {vat.toFixed(1)}%</span>
+          {item.isOptional && (
+            <span className="ml-2 text-[9px] font-bold uppercase border border-zinc-200 px-1 rounded text-zinc-400">
+              Optional
+            </span>
+          )}
         </div>
       </div>
 
@@ -225,12 +234,27 @@ const LineItemCard = React.memo(({
       {isExpanded && (
         <div className="absolute inset-x-0 top-full z-10 bg-white border-t border-zinc-100 p-4 shadow-xl -mt-4 rounded-b-2xl cursor-default" onClick={e => e.stopPropagation()}>
           <div className="space-y-4">
-            <textarea
-              ref={titleRef}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:bg-white focus:border-olive-500 transition-colors"
-              value={item.description || ''}
-              onChange={(e) => updateItem(idx, { description: e.target.value })}
-            />
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Code</label>
+                <input
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 font-mono text-sm outline-none focus:bg-white focus:border-olive-500 transition-colors"
+                  value={item.productCode || ''}
+                  onChange={(e) => updateItem(idx, { productCode: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Beschreibung</label>
+                <textarea
+                  ref={titleRef}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:bg-white focus:border-olive-500 transition-colors"
+                  value={item.description || ''}
+                  onChange={(e) => updateItem(idx, { description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Menge</label>
@@ -255,12 +279,23 @@ const LineItemCard = React.memo(({
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Preis</label>
-                <input
-                  type="number"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
-                  value={item.price ?? 0}
-                  onChange={(e) => updateItem(idx, { price: clampNumber(e.target.value, 0) })}
-                />
+                <div className="flex gap-2">
+                  <select
+                    className="w-24 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                    value={currency}
+                    onChange={(e) => onCurrencyChange(e.target.value)}
+                  >
+                    <option value="CHF">CHF</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                  <input
+                    type="number"
+                    className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                    value={item.price ?? 0}
+                    onChange={(e) => updateItem(idx, { price: clampNumber(e.target.value, 0) })}
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Rabatt %</label>
@@ -272,34 +307,33 @@ const LineItemCard = React.memo(({
                 />
               </div>
             </div>
-            
-            {/* Extended Options in Accordion */}
+
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-50 mt-2">
-                 <div>
-                    <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">MWST</label>
-                    <select
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
-                      value={Number(item.vatRate ?? defaultVatRate)}
-                      onChange={(e) => updateItem(idx, { vatRate: clampNumber(e.target.value, defaultVatRate) })}
-                    >
-                      {vatOptions.map((v: any) => (
-                        <option key={`${v.rate}-${v.code}`} value={v.rate}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
-                 </div>
-                 <div className="flex items-end">
-                    <label className="flex items-center gap-3 text-xs font-bold text-zinc-500 select-none bg-zinc-50 w-full p-3 rounded-xl border border-zinc-200 cursor-pointer hover:bg-zinc-100">
-                        <input
-                          type="checkbox"
-                          checked={!!item.isOptional}
-                          onChange={(e) => updateItem(idx, { isOptional: e.target.checked })}
-                          className="w-5 h-5 accent-olive-600 rounded"
-                        />
-                        Optional (Nicht im Total)
-                    </label>
-                 </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">MWST</label>
+                <select
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                  value={Number(item.vatRate ?? defaultVatRate)}
+                  onChange={(e) => updateItem(idx, { vatRate: clampNumber(e.target.value, defaultVatRate) })}
+                >
+                  {vatOptions.map((v: any) => (
+                    <option key={`${v.rate}-${v.code}`} value={v.rate}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-3 text-xs font-bold text-zinc-500 select-none bg-zinc-50 w-full p-3 rounded-xl border border-zinc-200 cursor-pointer hover:bg-zinc-100">
+                  <input
+                    type="checkbox"
+                    checked={!!item.isOptional}
+                    onChange={(e) => updateItem(idx, { isOptional: e.target.checked })}
+                    className="w-5 h-5 accent-olive-600 rounded"
+                  />
+                  Optional (Nicht im Total)
+                </label>
+              </div>
             </div>
 
             <div className="flex justify-end items-center pt-2">
@@ -327,7 +361,9 @@ const DraftCard = React.memo(({
   setOverlay,
   unitOptions,
   vatOptions,
-  defaultVatRate
+  defaultVatRate,
+  currency,
+  onCurrencyChange
 }: any) => {
   const d = row.data;
   const isEditing = row.mode === 'edit';
@@ -375,6 +411,18 @@ const DraftCard = React.memo(({
             </button>
           </div>
         )}
+      </div>
+
+      <div className="mt-3">
+        <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">Code</label>
+        <input
+          disabled={!isEditing}
+          className={`w-full border rounded-xl px-3 py-2 font-mono text-sm outline-none ${
+            isEditing ? 'bg-white border-zinc-200 focus:border-olive-500' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+          }`}
+          value={d.productCode || ''}
+          onChange={(e) => updateDraft(row.id, { productCode: e.target.value })}
+        />
       </div>
 
       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -425,15 +473,29 @@ const DraftCard = React.memo(({
 
         <div>
           <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">Preis</label>
-          <input
-            disabled={!isEditing}
-            type="number"
-            className={`w-full border rounded-xl p-3 font-bold text-sm text-right outline-none ${
-              isEditing ? 'bg-white border-zinc-200 focus:border-olive-500' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
-            }`}
-            value={d.price ?? 0}
-            onChange={(e) => updateDraft(row.id, { price: clampNumber(e.target.value, 0) })}
-          />
+          <div className="flex gap-2">
+            <select
+              disabled={!isEditing}
+              className={`w-24 border rounded-xl p-3 font-bold text-sm outline-none ${
+                isEditing ? 'bg-white border-zinc-200 focus:border-olive-500' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+              }`}
+              value={currency}
+              onChange={(e) => onCurrencyChange(e.target.value)}
+            >
+              <option value="CHF">CHF</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+            <input
+              disabled={!isEditing}
+              type="number"
+              className={`flex-1 border rounded-xl p-3 font-bold text-sm text-right outline-none ${
+                isEditing ? 'bg-white border-zinc-200 focus:border-olive-500' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
+              }`}
+              value={d.price ?? 0}
+              onChange={(e) => updateDraft(row.id, { price: clampNumber(e.target.value, 0) })}
+            />
+          </div>
         </div>
       </div>
 
@@ -562,6 +624,8 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
   }, [vatRates, defaultVatRate]);
 
   const unitOptions = useMemo(() => ['Stk', 'Std', 'm²', 'lfm', 'Psch', 'Sack', 'Gebinde'], []);
+  const currency = doc.currency || 'CHF';
+  const handleCurrencyChange = (value: string) => setDoc((prev) => ({ ...prev, currency: value }));
 
   const customerProjects = useMemo(() => {
     return doc.customerId ? projects.filter((p: any) => p.customerId === doc.customerId) : [];
@@ -1085,6 +1149,29 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
           >
             {isDirty ? 'Ungespeichert' : 'Gespeichert'}
           </span>
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              onClick={handleBack}
+              className="px-3 py-2 rounded-lg bg-zinc-100 text-zinc-700 text-[10px] font-black uppercase"
+            >
+              Abbrechen
+            </button>
+            {onDelete && !isNew && (
+              <button
+                onClick={handleDelete}
+                className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase"
+              >
+                Löschen
+              </button>
+            )}
+            <button
+              onClick={() => setShowActionMenu(true)}
+              className="w-10 h-10 rounded-lg bg-zinc-100 text-zinc-700 font-black text-lg"
+              title="Aktionen"
+            >
+              ⋮
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1421,6 +1508,8 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
                     unitOptions={unitOptions}
                     vatOptions={vatOptions}
                     docLength={doc.items?.length || 0}
+                    currency={currency}
+                    onCurrencyChange={handleCurrencyChange}
                   />
                 ))
               )}
@@ -1444,6 +1533,8 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
                   unitOptions={unitOptions}
                   vatOptions={vatOptions}
                   defaultVatRate={defaultVatRate}
+                  currency={currency}
+                  onCurrencyChange={handleCurrencyChange}
                 />
               ))}
 
@@ -1485,6 +1576,8 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
                       unitOptions={unitOptions}
                       vatOptions={vatOptions}
                       docLength={doc.items?.length || 0}
+                      currency={currency}
+                      onCurrencyChange={handleCurrencyChange}
                     />
                   ))
                 )}
@@ -1492,36 +1585,39 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             </div>
 
             {/* Totals */}
-            <div className="mt-8 pt-6 border-t border-zinc-100 space-y-2">
-              <div className="flex justify-between text-sm text-zinc-500">
-                <span>Zwischensumme</span>
-                <span className="font-mono font-bold">{formatMoney(totals.net)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-olive-700">
-                <span>MWST</span>
-                <span className="font-mono font-bold">{formatMoney(totals.vat)}</span>
-              </div>
-              <div className="flex justify-between text-xl font-black mt-4 pt-4 border-t border-zinc-900">
-                <span>Total</span>
-                <span className="font-mono">{formatMoney(totals.gross)}</span>
-              </div>
-
-              {optionalItems.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-dashed border-zinc-300 space-y-2">
-                  <div className="flex justify-between text-sm text-zinc-500">
-                    <span>Zwischensumme Optional</span>
-                    <span className="font-mono font-bold">{formatMoney(optionalTotals.net)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-zinc-500">
-                    <span>MWST Optional</span>
-                    <span className="font-mono font-bold">{formatMoney(optionalTotals.vat)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-zinc-800 font-black pt-2 border-t border-zinc-200">
-                    <span>Total inkl. Optional</span>
-                    <span className="font-mono">{formatMoney(totalsInclOptional.gross)}</span>
-                  </div>
+            <div className="mt-8">
+              <div className="p-6 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-zinc-500 font-medium">Zwischensumme</span>
+                  <span className="font-bold text-zinc-900">{formatMoney(totals.net)}</span>
                 </div>
-              )}
+                <div className="flex justify-between text-xs mb-4">
+                  <span className="text-olive-600 font-medium">MWST {defaultVatRate.toFixed(1)}%</span>
+                  <span className="font-bold text-olive-600">{formatMoney(totals.vat)}</span>
+                </div>
+
+                <div className="flex justify-between items-center pt-4 border-t border-zinc-200">
+                  <span className="text-sm font-black uppercase text-zinc-900">Total {currency}</span>
+                  <span className="text-2xl font-black text-zinc-900">{formatMoney(totals.gross)}</span>
+                </div>
+
+                {optionalItems.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-dashed border-zinc-200 space-y-2">
+                    <div className="flex justify-between text-xs text-zinc-500">
+                      <span>Zwischensumme Optional</span>
+                      <span className="font-bold">{formatMoney(optionalTotals.net)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500">
+                      <span>MWST Optional</span>
+                      <span className="font-bold">{formatMoney(optionalTotals.vat)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-zinc-800 font-black pt-2 border-t border-zinc-200">
+                      <span>Total inkl. Optional</span>
+                      <span>{formatMoney(totalsInclOptional.gross)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

@@ -118,6 +118,7 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
       totalTax: 0,
       totalGross: 0,
       dunningLevel: 0,
+      currency: 'CHF',
       notes: intro,
       footer: footer
     };
@@ -435,7 +436,53 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
 
       {/* 2. Content Area */}
       <div className="flex-1 overflow-y-auto bg-slate-50 px-4 md:px-8 pb-10 pt-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
+          <div className="space-y-3 md:hidden">
+            {paginatedDocs.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => {
+                  setSelectedDoc(d);
+                  setView('editor');
+                }}
+                className="w-full text-left"
+              >
+                <div className="relative p-4 rounded-xl border border-zinc-200 bg-white shadow-sm transition-all hover:border-olive-400 active:scale-[0.98]">
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="font-bold text-base truncate pr-2 text-zinc-900">{d.client?.name || '—'}</h4>
+                    <p className="font-bold text-base whitespace-nowrap text-zinc-900">{formatMoney(d.totalGross)}</p>
+                  </div>
+                  <p className="text-xs text-zinc-500 font-medium mb-3 truncate">
+                    {d.title || 'Ohne Titel'} • {d.items?.length ?? 0} Pos.
+                  </p>
+                  <div className="flex justify-between items-end">
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="font-bold text-zinc-800 tracking-wider">{d.docNumber}</span>
+                      <span className="text-zinc-300">•</span>
+                      <span className="text-zinc-500">{formatDate(d.date)}</span>
+                    </div>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest ${
+                        d.status === 'accepted'
+                          ? 'bg-green-100 text-green-700'
+                          : d.status === 'sent'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-zinc-100 text-zinc-600'
+                      }`}
+                    >
+                      {d.status}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {paginatedDocs.length === 0 && (
+              <div className="p-12 text-center text-zinc-400 font-bold uppercase tracking-widest text-xs bg-white border border-zinc-200 rounded-2xl">
+                Keine Einträge gefunden
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
             <table className="w-full text-left border-collapse">
               <thead className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
                 <tr>
