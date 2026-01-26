@@ -2,6 +2,7 @@
 import Dexie, { Table } from 'dexie';
 import { OfficeDocument, Expense, BankTransaction, OfficeSettings, Customer, Project, Product, Account, AccountGroup } from './officeTypes';
 import { STANDARD_PRODUCTS } from './modules/products/db';
+import { STANDARD_CUSTOMERS } from './modules/crm/db-crm';
 
 export class OfficeDB extends Dexie {
   documents!: Table<OfficeDocument>;
@@ -167,5 +168,11 @@ export const initSettings = async () => {
   const productsCount = await db.products.count();
   if (productsCount === 0) {
     await db.products.bulkAdd(STANDARD_PRODUCTS as Product[]);
+  }
+
+  // --- Seed CRM Customers ---
+  const customersCount = await db.customers.count();
+  if (customersCount === 0) {
+    await db.customers.bulkAdd(STANDARD_CUSTOMERS as Customer[]);
   }
 };
