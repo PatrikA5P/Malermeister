@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   OfficeDocument,
@@ -143,7 +144,6 @@ const LineItemCard = React.memo(({
   // Focus management for accordion
   useEffect(() => {
     if (isExpanded) {
-        // Small timeout to allow render
         const t = setTimeout(() => titleRef.current?.focus(), 50);
         return () => clearTimeout(t);
     }
@@ -151,88 +151,63 @@ const LineItemCard = React.memo(({
 
   return (
     <div
-      className={`relative rounded-2xl border bg-white flex overflow-hidden transition-all duration-200 ${
-        section === 'optional' ? 'border-dashed border-zinc-300 bg-zinc-50/60' : 'border-zinc-100'
-      } ${isDragged ? 'opacity-40 border-dashed border-olive-500 bg-olive-50 scale-[0.98]' : 'hover:border-zinc-300'}`}
+      className={`relative rounded-2xl border transition-all duration-200 
+      ${section === 'optional' ? 'border-dashed border-zinc-300 bg-zinc-50/60' : 'border-zinc-100 bg-white'} 
+      ${isDragged ? 'opacity-40 border-dashed border-olive-500 bg-olive-50 scale-[0.98]' : 'hover:border-zinc-300'}
+      ${isExpanded ? 'ring-2 ring-olive-500 shadow-xl z-20 transform scale-[1.01]' : ''}
+      `}
       onDragOver={(e) => onDragOver(e, idx)}
       onDrop={(e) => onDrop(e, idx)}
     >
-      {/* DRAG HANDLE & SORT COLUMN (Left) */}
-      <div
-        className="w-10 bg-zinc-50 border-r border-zinc-100 flex flex-col items-center justify-center gap-2 cursor-grab active:cursor-grabbing hover:bg-zinc-100 transition-colors"
-        draggable
-        onDragStart={(e) => onDragStart(e, idx)}
-      >
-        <button type="button" onClick={(e) => moveUp(e, idx)} disabled={idx === 0} className="text-zinc-300 hover:text-black disabled:opacity-0 p-1">
-          ▲
-        </button>
-        <span className="text-zinc-300 text-xl leading-none select-none">≡</span>
-        <button
-          type="button"
-          onClick={(e) => moveDown(e, idx)}
-          disabled={idx >= docLength - 1}
-          className="text-zinc-300 hover:text-black disabled:opacity-0 p-1"
-        >
-          ▼
-        </button>
-      </div>
+      {/* --- COLLAPSED VIEW --- */}
+      {!isExpanded && (
+        <div className="flex overflow-hidden">
+            {/* Drag Handle */}
+            <div
+                className="w-10 bg-zinc-50 border-r border-zinc-100 flex flex-col items-center justify-center gap-2 cursor-grab active:cursor-grabbing hover:bg-zinc-100 transition-colors"
+                draggable
+                onDragStart={(e) => onDragStart(e, idx)}
+            >
+                <button type="button" onClick={(e) => moveUp(e, idx)} disabled={idx === 0} className="text-zinc-300 hover:text-black disabled:opacity-0 p-1">▲</button>
+                <span className="text-zinc-300 text-xl leading-none select-none">≡</span>
+                <button type="button" onClick={(e) => moveDown(e, idx)} disabled={idx >= docLength - 1} className="text-zinc-300 hover:text-black disabled:opacity-0 p-1">▼</button>
+            </div>
 
-      {/* CONTENT (Middle) */}
-      <div
-        className="flex-1 p-3 min-w-0 cursor-pointer flex flex-col justify-between"
-        onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-      >
-        {/* Row 1: Title & Amount */}
-        <div className="flex justify-between items-start mb-1.5 gap-4">
-          <div className="flex-1 min-w-0 truncate">
-            {item.productCode && (
-              <span className="text-[10px] font-mono bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded mr-2 border border-zinc-200">
-                {item.productCode}
-              </span>
-            )}
-            <span className="font-bold text-sm text-zinc-900">{item.description || 'Neue Position'}</span>
-          </div>
-          <span className="font-bold text-sm whitespace-nowrap text-zinc-900">{formatWithCurrency(gross)}</span>
+            {/* Content */}
+            <div
+                className="flex-1 p-3 min-w-0 cursor-pointer flex flex-col justify-between"
+                onClick={() => setExpandedItemId(item.id)}
+            >
+                <div className="flex justify-between items-start mb-1.5 gap-4">
+                    <div className="flex-1 min-w-0 truncate">
+                        {item.productCode && (
+                            <span className="text-[10px] font-mono bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded mr-2 border border-zinc-200">
+                                {item.productCode}
+                            </span>
+                        )}
+                        <span className="font-bold text-sm text-zinc-900">{item.description || 'Neue Position'}</span>
+                    </div>
+                    <span className="font-bold text-sm whitespace-nowrap text-zinc-900">{formatWithCurrency(gross)}</span>
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px] overflow-hidden whitespace-nowrap">
+                    <span className="px-1.5 py-0.5 rounded font-bold bg-zinc-50 text-zinc-600">
+                        {Number(item.quantity || 0).toFixed(2)} {item.unit}
+                    </span>
+                    <span className="text-zinc-300">×</span>
+                    <span className="text-zinc-400">{formatWithCurrency(Number(item.price || 0))}</span>
+                    {item.discount ? <span className="text-orange-600 font-bold bg-orange-50 px-1 rounded ml-1">-{item.discount}%</span> : null}
+                    <span className="text-zinc-300 mx-1">|</span>
+                    <span className="text-zinc-400">MWST {vat.toFixed(1)}%</span>
+                    {item.isOptional && <span className="ml-2 text-[9px] font-bold uppercase border border-zinc-200 px-1 rounded text-zinc-400">Optional</span>}
+                </div>
+            </div>
         </div>
+      )}
 
-        {/* Row 2: Metadata */}
-        <div className="flex items-center gap-2 text-[11px] overflow-hidden whitespace-nowrap">
-          <span className="px-1.5 py-0.5 rounded font-bold bg-zinc-50 text-zinc-600">
-            {Number(item.quantity || 0).toFixed(2)} {item.unit}
-          </span>
-          <span className="text-zinc-300">×</span>
-          <span className="text-zinc-400">{formatWithCurrency(Number(item.price || 0))}</span>
-          {item.discount ? (
-            <span className="text-orange-600 font-bold bg-orange-50 px-1 rounded ml-1">-{item.discount}%</span>
-          ) : null}
-          <span className="text-zinc-300 mx-1">|</span>
-          <span className="text-zinc-400">MWST {vat.toFixed(1)}%</span>
-          {item.isOptional && (
-            <span className="ml-2 text-[9px] font-bold uppercase border border-zinc-200 px-1 rounded text-zinc-400">
-              Optional
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* DELETE BUTTON (Right) */}
-      <div className="w-12 border-l border-zinc-100 flex items-center justify-center bg-zinc-50/30">
-         <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteItem(idx);
-          }}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:bg-red-50 hover:text-red-500 transition-all"
-          title="Löschen"
-        >
-          🗑️
-        </button>
-      </div>
-
-      {/* EDIT FORM (ACCORDION) */}
+      {/* --- EXPANDED EDIT FORM --- */}
       {isExpanded && (
-        <div className="absolute inset-x-0 top-full z-10 bg-white border-t border-zinc-100 p-4 shadow-xl -mt-4 rounded-b-2xl cursor-default" onClick={e => e.stopPropagation()}>
+        <div className="p-4 bg-white rounded-2xl cursor-default" onClick={e => e.stopPropagation()}>
           <div className="space-y-4">
             <div className="space-y-3">
               <div>
@@ -255,8 +230,9 @@ const LineItemCard = React.memo(({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
+            {/* Optimized Grid Layout */}
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="flex-initial w-32 shrink-0">
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Menge</label>
                 <input
                   type="number"
@@ -265,81 +241,79 @@ const LineItemCard = React.memo(({
                   onChange={(e) => updateItem(idx, { quantity: clampNumber(e.target.value, 0) })}
                 />
               </div>
-              <div>
+              <div className="flex-initial w-24 shrink-0">
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Einheit</label>
                 <select
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
                   value={item.unit || 'Stk'}
                   onChange={(e) => updateItem(idx, { unit: e.target.value })}
                 >
-                  {unitOptions.map((u: string) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
+                  {unitOptions.map((u: string) => <option key={u} value={u}>{u}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Preis</label>
-                <div className="flex gap-2">
-                  <select
-                    className="w-24 bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
-                    value={currency}
-                    onChange={(e) => onCurrencyChange(e.target.value)}
-                  >
-                    <option value="CHF">CHF</option>
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
-                  </select>
-                  <input
-                    type="number"
-                    className="flex-1 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
-                    value={item.price ?? 0}
-                    onChange={(e) => updateItem(idx, { price: clampNumber(e.target.value, 0) })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Rabatt %</label>
-                <input
-                  type="number"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm text-orange-600 focus:bg-white focus:border-olive-500"
-                  value={item.discount ?? 0}
-                  onChange={(e) => updateItem(idx, { discount: clampNumber(e.target.value, 0) })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-50 mt-2">
-              <div>
+              <div className="flex-initial w-24 shrink-0">
                 <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">MWST</label>
                 <select
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
                   value={Number(item.vatRate ?? defaultVatRate)}
                   onChange={(e) => updateItem(idx, { vatRate: clampNumber(e.target.value, defaultVatRate) })}
                 >
-                  {vatOptions.map((v: any) => (
-                    <option key={`${v.rate}-${v.code}`} value={v.rate}>
-                      {v.label}
-                    </option>
-                  ))}
+                  {vatOptions.map((v: any) => <option key={`${v.rate}-${v.code}`} value={v.rate}>{v.label}</option>)}
                 </select>
               </div>
-              <div className="flex items-end">
-                <label className="flex items-center gap-3 text-xs font-bold text-zinc-500 select-none bg-zinc-50 w-full p-3 rounded-xl border border-zinc-200 cursor-pointer hover:bg-zinc-100">
+              
+              <div className="flex-1 min-w-[140px]">
+                <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">Preis / Rabatt</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                     <span className="absolute left-3 top-3 text-zinc-400 text-xs">{currency}</span>
+                     <input
+                        type="number"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-3 py-3 font-bold text-sm focus:bg-white focus:border-olive-500"
+                        value={item.price ?? 0}
+                        onChange={(e) => updateItem(idx, { price: clampNumber(e.target.value, 0) })}
+                      />
+                  </div>
+                  <div className="relative w-20">
+                      <input
+                        type="number"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-2 py-3 font-bold text-sm text-orange-600 focus:bg-white focus:border-olive-500"
+                        value={item.discount ?? 0}
+                        onChange={(e) => updateItem(idx, { discount: clampNumber(e.target.value, 0) })}
+                      />
+                      <span className="absolute right-2 top-3 text-zinc-400 text-xs">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-zinc-50">
+               <label className="flex items-center gap-3 text-xs font-bold text-zinc-500 select-none cursor-pointer">
                   <input
                     type="checkbox"
                     checked={!!item.isOptional}
                     onChange={(e) => updateItem(idx, { isOptional: e.target.checked })}
                     className="w-5 h-5 accent-olive-600 rounded"
                   />
-                  Optional (Nicht im Total)
+                  Optional
                 </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end items-center pt-2">
-              <button type="button" onClick={() => setExpandedItemId(null)} className="bg-zinc-900 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase hover:bg-olive-600 transition-colors shadow-lg">
-                Fertig
-              </button>
+                
+                <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); deleteItem(idx); }}
+                      className="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold uppercase text-[10px] hover:bg-red-100"
+                    >
+                      Löschen
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={() => setExpandedItemId(null)} 
+                        className="bg-zinc-900 text-white px-6 py-2 rounded-lg font-bold text-xs uppercase hover:bg-olive-600 transition-colors shadow-lg"
+                    >
+                        Fertig
+                    </button>
+                </div>
             </div>
           </div>
         </div>
@@ -425,8 +399,9 @@ const DraftCard = React.memo(({
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div>
+      {/* Responsive Input Grid - Matching LineItemCard */}
+      <div className="mt-3 flex flex-wrap gap-2 items-end">
+        <div className="flex-initial w-28 shrink-0">
           <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">Menge</label>
           <input
             disabled={!isEditing}
@@ -439,7 +414,7 @@ const DraftCard = React.memo(({
           />
         </div>
 
-        <div>
+        <div className="flex-initial w-24 shrink-0">
           <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">Einheit</label>
           <select
             disabled={!isEditing}
@@ -455,7 +430,7 @@ const DraftCard = React.memo(({
           </select>
         </div>
 
-        <div>
+        <div className="flex-initial w-24 shrink-0">
           <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">MWST</label>
           <select
             disabled={!isEditing}
@@ -471,12 +446,12 @@ const DraftCard = React.memo(({
           </select>
         </div>
 
-        <div>
+        <div className="flex-1 min-w-[140px]">
           <label className="text-[10px] font-bold uppercase text-zinc-400 mb-1 block">Preis</label>
           <div className="flex gap-2">
             <select
               disabled={!isEditing}
-              className={`w-24 border rounded-xl p-3 font-bold text-sm outline-none ${
+              className={`w-20 border rounded-xl p-3 font-bold text-sm outline-none ${
                 isEditing ? 'bg-white border-zinc-200 focus:border-olive-500' : 'bg-zinc-50 border-zinc-200 text-zinc-700'
               }`}
               value={currency}
@@ -484,7 +459,6 @@ const DraftCard = React.memo(({
             >
               <option value="CHF">CHF</option>
               <option value="EUR">EUR</option>
-              <option value="USD">USD</option>
             </select>
             <input
               disabled={!isEditing}
@@ -1149,36 +1123,12 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
           >
             {isDirty ? 'Ungespeichert' : 'Gespeichert'}
           </span>
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              onClick={handleBack}
-              className="px-3 py-2 rounded-lg bg-zinc-100 text-zinc-700 text-[10px] font-black uppercase"
-            >
-              Abbrechen
-            </button>
-            {onDelete && !isNew && (
-              <button
-                onClick={handleDelete}
-                className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase"
-              >
-                Löschen
-              </button>
-            )}
-            <button
-              onClick={() => setShowActionMenu(true)}
-              className="w-10 h-10 rounded-lg bg-zinc-100 text-zinc-700 font-black text-lg"
-              title="Aktionen"
-            >
-              ⋮
-            </button>
-          </div>
         </div>
       </div>
 
       {/* MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-40 print:p-0 print:overflow-visible bg-slate-50 print:bg-white">
         {/* PRINT LAYOUT (Hidden from screen but rendered for HTML2PDF) */}
-        {/* Fix: Use absolute off-screen positioning instead of hidden so html2canvas can render it */}
         <div
           ref={printContainerRef}
           id="print-content"
@@ -1297,7 +1247,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <h3 className="font-black uppercase text-xs text-zinc-400 tracking-widest mb-4">Empfänger</h3>
 
-            {/* Inline Suche: identisch wie bei "noch kein Kunde", aber schliesst ohne den bestehenden zu entfernen */}
             {!doc.client?.name || showCustomerSearchInline ? (
               <div ref={customerSearchRef} className="relative">
                 <input
@@ -1585,39 +1534,36 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             </div>
 
             {/* Totals */}
-            <div className="mt-8">
-              <div className="p-6 rounded-2xl border border-zinc-200 bg-white shadow-sm">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-zinc-500 font-medium">Zwischensumme</span>
-                  <span className="font-bold text-zinc-900">{formatMoney(totals.net)}</span>
-                </div>
-                <div className="flex justify-between text-xs mb-4">
-                  <span className="text-olive-600 font-medium">MWST {defaultVatRate.toFixed(1)}%</span>
-                  <span className="font-bold text-olive-600">{formatMoney(totals.vat)}</span>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-zinc-200">
-                  <span className="text-sm font-black uppercase text-zinc-900">Total {currency}</span>
-                  <span className="text-2xl font-black text-zinc-900">{formatMoney(totals.gross)}</span>
-                </div>
-
-                {optionalItems.length > 0 && (
-                  <div className="mt-6 pt-4 border-t border-dashed border-zinc-200 space-y-2">
-                    <div className="flex justify-between text-xs text-zinc-500">
-                      <span>Zwischensumme Optional</span>
-                      <span className="font-bold">{formatMoney(optionalTotals.net)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-zinc-500">
-                      <span>MWST Optional</span>
-                      <span className="font-bold">{formatMoney(optionalTotals.vat)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-zinc-800 font-black pt-2 border-t border-zinc-200">
-                      <span>Total inkl. Optional</span>
-                      <span>{formatMoney(totalsInclOptional.gross)}</span>
-                    </div>
-                  </div>
-                )}
+            <div className="mt-8 pt-6 border-t border-zinc-100 space-y-2">
+              <div className="flex justify-between text-sm text-zinc-500">
+                <span>Zwischensumme</span>
+                <span className="font-mono font-bold">{formatMoney(totals.net)}</span>
               </div>
+              <div className="flex justify-between text-sm text-olive-700">
+                <span>MWST</span>
+                <span className="font-mono font-bold">{formatMoney(totals.vat)}</span>
+              </div>
+              <div className="flex justify-between text-xl font-black mt-4 pt-4 border-t border-zinc-900">
+                <span>Total</span>
+                <span className="font-mono">{formatMoney(totals.gross)}</span>
+              </div>
+
+              {optionalItems.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-dashed border-zinc-300 space-y-2">
+                  <div className="flex justify-between text-sm text-zinc-500">
+                    <span>Zwischensumme Optional</span>
+                    <span className="font-mono font-bold">{formatMoney(optionalTotals.net)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-zinc-500">
+                    <span>MWST Optional</span>
+                    <span className="font-mono font-bold">{formatMoney(optionalTotals.vat)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-zinc-800 font-black pt-2 border-t border-zinc-200">
+                    <span>Total inkl. Optional</span>
+                    <span className="font-mono">{formatMoney(totalsInclOptional.gross)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
