@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../../../db';
-import { OfficeDocument, OfficeLineItem, Customer, Account, VatRate, BankTransaction } from '../../../officeTypes';
+import { OfficeDocument, OfficeLineItem, Customer, Account, VatRate, BankTransaction, DocumentAttachment } from '../../../officeTypes';
 import CustomerManager from '../../crm/CustomerManager';
 import { formatMoney, formatDate } from '../../../components/SharedUI';
 import { analyzeSupplierInvoice } from '../../../geminiService';
@@ -509,13 +509,15 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
       totalNet: 0,
       totalTax: 0,
       totalGross: 0,
-      currency: 'CHF'
+      currency: 'CHF',
+      attachments: []
     } as any;
   });
 
   // Attachments
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [selectedAttachmentId, setSelectedAttachmentId] = useState<string | null>(
+    initialDoc?.attachments?.[0]?.id ?? null
+  );
 
   // Lookups
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -533,8 +535,14 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
     loadLookups();
     // Heuristic to detect mode if editing
     if (initialDoc && initialDoc.items.length > 1) setBookingMode('positions');
+    if (initialDoc?.attachments?.length) {
+      setSelectedAttachmentId((prev) => prev ?? initialDoc.attachments?.[0]?.id ?? null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const selectedAttachment = doc.attachments?.find((attachment) => attachment.id === selectedAttachmentId) || null;
+  const hasAttachments = (doc.attachments?.length || 0) > 0;
 
   const loadLookups = async () => {
     setCustomers(await db.customers.toArray());
@@ -560,18 +568,33 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelection(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      handleFileSelectionList(e.dataTransfer.files);
     }
   };
 
+  const handleFileSelectionList = (files: FileList | File[]) => {
+    Array.from(files).forEach((file) => handleFileSelection(file));
+  };
+
   const handleFileSelection = async (f: File) => {
-    setFile(f);
+    const attachmentId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const reader = new FileReader();
 
     reader.onload = async (ev) => {
       const result = ev.target?.result as string;
-      setFilePreview(result);
+      const newAttachment: DocumentAttachment = {
+        id: attachmentId,
+        name: f.name,
+        type: f.type,
+        dataUrl: result,
+        uploadedAt: new Date().toISOString()
+      };
+      setDoc((prev) => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), newAttachment]
+      }));
+      setSelectedAttachmentId(attachmentId);
 
       // Try AI Analysis
       if (f.type.includes('image') || f.type.includes('pdf')) {
@@ -611,6 +634,16 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
       }
     };
     reader.readAsDataURL(f);
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setDoc((prev) => {
+      const remaining = (prev.attachments || []).filter((attachment) => attachment.id !== attachmentId);
+      const nextSelected =
+        selectedAttachmentId === attachmentId ? remaining[0]?.id ?? null : selectedAttachmentId;
+      setSelectedAttachmentId(nextSelected);
+      return { ...prev, attachments: remaining };
+    });
   };
 
   const selectSupplier = (c: Customer) => {
@@ -814,7 +847,8 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
               type="file"
               className="hidden"
               accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
-              onChange={(e) => e.target.files?.[0] && handleFileSelection(e.target.files[0])}
+              multiple
+              onChange={(e) => e.target.files && handleFileSelectionList(e.target.files)}
             />
 
             {isProcessing ? (
@@ -822,16 +856,17 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
                 <div className="w-12 h-12 border-4 border-olive-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                 <p className="font-bold text-olive-600 uppercase text-xs animate-pulse">KI analysiert Beleg...</p>
               </div>
-            ) : file ? (
+            ) : hasAttachments && selectedAttachment ? (
               <div>
                 <div className="text-4xl mb-2">📄</div>
-                <p className="font-bold text-zinc-800">{file.name}</p>
-                <p className="text-xs text-zinc-400">{(file.size / 1024).toFixed(1)} KB</p>
+                <p className="font-bold text-zinc-800">{selectedAttachment.name}</p>
+                <p className="text-xs text-zinc-400">
+                  {doc.attachments?.length} Beleg{doc.attachments?.length === 1 ? '' : 'e'}
+                </p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setFile(null);
-                    setFilePreview(null);
+                    handleRemoveAttachment(selectedAttachment.id);
                   }}
                   className="mt-4 text-red-500 text-xs font-bold uppercase hover:underline"
                 >
@@ -1201,18 +1236,69 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
               <h3 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-4">Beleg</h3>
-              {filePreview ? (
-                <div className="relative group h-64 bg-zinc-50 rounded-lg flex items-center justify-center border border-zinc-200 overflow-hidden">
-                  <img src={filePreview} alt="Beleg" className="w-full h-full object-contain" />
-                  <button
-                    onClick={() => {
-                      setFile(null);
-                      setFilePreview(null);
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-bold shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
+              {hasAttachments && selectedAttachment ? (
+                <div className="space-y-3">
+                  <div className="relative group h-64 bg-zinc-50 rounded-lg flex items-center justify-center border border-zinc-200 overflow-hidden">
+                    {selectedAttachment.type === 'application/pdf' ? (
+                      <iframe
+                        src={selectedAttachment.dataUrl}
+                        title={selectedAttachment.name}
+                        className="w-full h-full"
+                      />
+                    ) : selectedAttachment.type.startsWith('image/') ? (
+                      <img src={selectedAttachment.dataUrl} alt="Beleg" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="text-center text-zinc-500 text-xs px-4">
+                        <div className="text-3xl mb-2">📎</div>
+                        <p className="font-bold">{selectedAttachment.name}</p>
+                        <p className="text-[10px] uppercase mt-2">Keine Vorschau verfügbar</p>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => handleRemoveAttachment(selectedAttachment.id)}
+                      className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs font-bold shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(doc.attachments || []).map((attachment) => (
+                      <button
+                        key={attachment.id}
+                        onClick={() => setSelectedAttachmentId(attachment.id)}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border transition ${
+                          attachment.id === selectedAttachmentId
+                            ? 'bg-olive-600 text-white border-olive-600'
+                            : 'bg-white text-zinc-500 border-zinc-200 hover:border-olive-400'
+                        }`}
+                      >
+                        {attachment.name}
+                      </button>
+                    ))}
+                    <a
+                      href={selectedAttachment.dataUrl}
+                      download={selectedAttachment.name}
+                      className="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase border border-zinc-200 text-zinc-500 hover:border-olive-400"
+                    >
+                      Download
+                    </a>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => document.getElementById('file-upload-2')?.click()}
+                      className="w-full bg-zinc-50 py-2 rounded-lg text-[10px] font-bold uppercase text-zinc-500 hover:bg-zinc-100"
+                    >
+                      Weiteren Beleg hinzufügen
+                    </button>
+                    <input
+                      id="file-upload-2"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                      multiple
+                      onChange={(e) => e.target.files && handleFileSelectionList(e.target.files)}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div
@@ -1225,8 +1311,9 @@ const SupplierInvoiceEditor: React.FC<SupplierInvoiceEditorProps> = ({
                     id="file-upload-2"
                     type="file"
                     className="hidden"
-                    accept=".pdf,image/*"
-                    onChange={(e) => e.target.files?.[0] && handleFileSelection(e.target.files[0])}
+                    accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                    multiple
+                    onChange={(e) => e.target.files && handleFileSelectionList(e.target.files)}
                   />
                 </div>
               )}

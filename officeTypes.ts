@@ -150,6 +150,14 @@ export interface AuditEvent {
   meta?: Record<string, any>;
 }
 
+export interface DocumentAttachment {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface OfficeDocument {
   id?: number;
   docNumber: string;
@@ -181,6 +189,7 @@ export interface OfficeDocument {
   
   relatedQuoteId?: number;
   auditTrail?: AuditEvent[];
+  attachments?: DocumentAttachment[];
 }
 
 export interface Expense {
