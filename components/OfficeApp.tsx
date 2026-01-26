@@ -104,7 +104,7 @@ const OfficeApp: React.FC = () => {
   });
 
   // Navigation State
-  const [salesInitialTab, setSalesInitialTab] = useState<SalesTab>('quotes');
+  const [salesInitialTab, setSalesInitialTab] = useState<SalesTab | undefined>(undefined);
   const [selectedDocId, setSelectedDocId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
@@ -248,7 +248,7 @@ const OfficeApp: React.FC = () => {
      }
   };
 
-  const openSales = (tab: SalesTab) => {
+  const openSales = (tab?: SalesTab) => {
       setSalesInitialTab(tab);
       setSelectedDocId(undefined); // Reset deep link
       setView('sales');
@@ -436,7 +436,7 @@ const OfficeApp: React.FC = () => {
             {/* --- MODULE GRID (Legacy) --- */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                {/* SALES GROUP */}
-               <button onClick={() => openSales('quotes')} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group relative overflow-hidden">
+               <button onClick={() => openSales()} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group relative overflow-hidden">
                     <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">💼</span>
                     <h3 className="font-bold text-sm text-zinc-900">Verkauf</h3>
                     <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Offerten & Rechnungen</p>

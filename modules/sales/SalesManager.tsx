@@ -5,6 +5,7 @@ import ProjectOverview from './orders/ProjectOverview';
 import InvoiceOverview from './invoices/InvoiceOverview';
 
 export type SalesTab = 'quotes' | 'orders' | 'invoices' | 'dunning';
+type SalesView = 'home' | SalesTab;
 
 interface SalesManagerProps {
     onBack: () => void;
@@ -13,22 +14,36 @@ interface SalesManagerProps {
     preselectedCustomerId?: number;
 }
 
-const SalesManager: React.FC<SalesManagerProps> = ({ onBack, initialTab = 'quotes', preselectedDocId, preselectedCustomerId }) => {
-  const [currentView, setCurrentView] = useState<SalesTab>(initialTab);
+const SalesManager: React.FC<SalesManagerProps> = ({ onBack, initialTab, preselectedDocId, preselectedCustomerId }) => {
+  const [currentView, setCurrentView] = useState<SalesView>(initialTab ?? 'home');
 
   // Sync internal state if prop changes (e.g. external navigation)
   useEffect(() => {
-      if(initialTab) setCurrentView(initialTab);
+      if (initialTab) {
+          setCurrentView(initialTab);
+      }
   }, [initialTab]);
 
-  const NavButton = ({ id, label, icon }: { id: SalesTab, label: string, icon: string }) => (
-      <button 
-        onClick={() => setCurrentView(id)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all whitespace-nowrap ${currentView === id ? 'bg-zinc-900 text-white shadow-lg' : 'bg-white border border-zinc-200 text-zinc-500 hover:bg-zinc-50'}`}
-      >
-          <span className="text-lg">{icon}</span>
-          <span className="hidden md:inline">{label}</span>
-      </button>
+  const SalesSwitcher = () => (
+      <label className="relative inline-flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
+          <span className="hidden md:inline">Bereich</span>
+          <div className="relative">
+              <select
+                  value={currentView === 'home' ? '' : currentView}
+                  onChange={(event) => setCurrentView(event.target.value as SalesTab)}
+                  className="appearance-none bg-white border border-zinc-200 text-zinc-700 text-xs font-bold uppercase tracking-widest px-4 py-2 pr-9 rounded-xl shadow-sm focus:outline-none focus:border-zinc-400"
+              >
+                  <option value="" disabled>
+                      Bereich wählen
+                  </option>
+                  <option value="quotes">Offerten</option>
+                  <option value="orders">Aufträge</option>
+                  <option value="invoices">Rechnungen</option>
+                  <option value="dunning">Mahnlauf</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">⌄</span>
+          </div>
+      </label>
   );
 
   return (
@@ -44,17 +59,58 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onBack, initialTab = 'quote
                  </div>
              </div>
              
-             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
-                 <NavButton id="quotes" label="Offerten" icon="📋" />
-                 <NavButton id="orders" label="Aufträge" icon="🏗️" />
-                 <NavButton id="invoices" label="Rechnungen" icon="📄" />
-                 <NavButton id="dunning" label="Mahnlauf" icon="🔔" /> 
-             </div>
+             {currentView !== 'home' && (
+                 <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
+                     <SalesSwitcher />
+                 </div>
+             )}
            </div>
        </div>
 
        {/* Content */}
        <div className="flex-1 overflow-hidden">
+           {currentView === 'home' && (
+               <div className="p-6 md:p-12">
+                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                       <button
+                           onClick={() => setCurrentView('quotes')}
+                           className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group"
+                       >
+                           <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">📋</span>
+                           <h3 className="font-bold text-sm text-zinc-900">Offerten</h3>
+                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Angebote & Entwürfe</p>
+                       </button>
+
+                       <button
+                           onClick={() => setCurrentView('orders')}
+                           className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group"
+                       >
+                           <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🏗️</span>
+                           <h3 className="font-bold text-sm text-zinc-900">Aufträge</h3>
+                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Projekte & Planung</p>
+                       </button>
+
+                       <button
+                           onClick={() => setCurrentView('invoices')}
+                           className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group"
+                       >
+                           <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">📄</span>
+                           <h3 className="font-bold text-sm text-zinc-900">Rechnungen</h3>
+                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Faktura & Zahlung</p>
+                       </button>
+
+                       <button
+                           onClick={() => setCurrentView('dunning')}
+                           className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group"
+                       >
+                           <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🔔</span>
+                           <h3 className="font-bold text-sm text-zinc-900">Mahnlauf</h3>
+                           <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Offene Forderungen</p>
+                       </button>
+                   </div>
+               </div>
+           )}
+
            {currentView === 'quotes' && (
                <QuotesOverview 
                    onBack={onBack} 
