@@ -536,7 +536,7 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
 }) => {
   // Doc state (persisted)
   const [doc, setDoc] = useState<OfficeDocument>(() => deepClone(initialDoc));
-  const [originalDoc] = useState<string>(() => JSON.stringify(initialDoc));
+  const [originalDoc, setOriginalDoc] = useState<string>(() => JSON.stringify(initialDoc));
 
   // UI state
   const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null);
@@ -751,6 +751,7 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
       totalGross: totals.gross
     };
     await onSave(finalDoc);
+    setOriginalDoc(JSON.stringify(finalDoc));
     setToast({ msg: 'Offerte gespeichert', type: 'success' });
   };
 
