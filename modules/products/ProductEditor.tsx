@@ -19,6 +19,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
     const [settings, setSettings] = useState<any>(null);
     const [showSupplierOverlay, setShowSupplierOverlay] = useState(false);
     const [supplierName, setSupplierName] = useState('');
+    const [existingGroups, setExistingGroups] = useState<string[]>([]);
 
     useEffect(() => {
         const load = async () => {
@@ -26,6 +27,11 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
             const s = await db.settings.toArray();
             setSettings(s[0]);
             
+            // Load existing products to extract groups
+            const allProducts = await db.products.toArray();
+            const groups = Array.from(new Set(allProducts.map(p => p.group).filter(g => !!g))).sort();
+            setExistingGroups(groups as string[]);
+
             // Resolve Supplier Name if ID exists
             if (initialProduct.supplierId) {
                 const supp = await db.customers.get(initialProduct.supplierId);
@@ -158,7 +164,16 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
 
                         <div className="grid grid-cols-2 gap-4">
                             <InputGroup label="Gruppe / Kategorie">
-                                <input className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm" value={editing.group || ''} onChange={e => setEditing({...editing, group: e.target.value})} placeholder="z.B. Farben" />
+                                <input 
+                                    className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm font-bold" 
+                                    value={editing.group || ''} 
+                                    onChange={e => setEditing({...editing, group: e.target.value})} 
+                                    placeholder="Wählen oder neu erstellen..." 
+                                    list="group-options"
+                                />
+                                <datalist id="group-options">
+                                    {existingGroups.map(g => <option key={g} value={g} />)}
+                                </datalist>
                             </InputGroup>
                             <InputGroup label="Ansprechpartner Intern">
                                 <input className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm" value={editing.contactPerson || ''} onChange={e => setEditing({...editing, contactPerson: e.target.value})} />
