@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="de" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maler Borer | Handwerk mit Herz & Verstand</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              olive: {
+                50: '#f6f7f2', 100: '#eceee3', 200: '#d0d6b6', 300: '#b4be89', 400: '#98a55c',
+                500: '#7c8d2f', 600: '#606e25', 700: '#444f1a', 800: '#293010', 900: '#0d1005',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, .brand-font { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body class="bg-white text-black">
+
+    <!-- HEADER -->
+    <header class="fixed w-full z-50 bg-white/90 backdrop-blur-sm shadow-sm py-4">
+        <div class="container mx-auto px-6 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 bg-olive-600 flex items-center justify-center rounded shadow-lg transform rotate-3">
+                    <span class="text-white font-bold text-xl">B</span>
+                </div>
+                <span class="text-2xl font-bold tracking-tighter brand-font text-black">
+                    MALER <span class="text-olive-600">BORER</span>
+                </span>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="#home" class="font-semibold uppercase text-sm tracking-widest text-black/70 hover:text-olive-600">Start</a>
+                <a href="#services" class="font-semibold uppercase text-sm tracking-widest text-black/70 hover:text-olive-600">Leistungen</a>
+                <a href="#b2b" class="font-semibold uppercase text-sm tracking-widest text-black/70 hover:text-olive-600">Für Verwaltungen</a>
+                <a href="#contact" class="font-semibold uppercase text-sm tracking-widest text-black/70 hover:text-olive-600">Kontakt</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- HERO -->
+        <section id="home" class="relative min-h-screen flex flex-col justify-center overflow-hidden">
+            <div class="absolute inset-0 z-0 bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1562664377-709f2c337eb2?q=80&w=2070')">
+                <div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent"></div>
+            </div>
+            <div class="container mx-auto px-6 relative z-10 pt-20">
+                <div class="max-w-4xl">
+                    <div class="inline-flex items-center space-x-2 mb-6 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-olive-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-olive-500"></span>
+                        </span>
+                        <span class="text-white text-xs font-black uppercase tracking-[0.3em]">JETZT VERFÜGBAR IN DER REGION</span>
+                    </div>
+                    <h1 class="text-6xl md:text-9xl font-black text-white leading-[0.9] mb-8 drop-shadow-2xl italic tracking-tighter">
+                        QUALITÄT <br /> <span class="text-olive-500 not-italic uppercase">DIE STREICHT.</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl text-white/70 mb-12 max-w-2xl font-light leading-relaxed">
+                        Maler- & Gipserhandwerk auf höchstem Niveau. Ich kombiniere <span className="text-white font-semibold">Schweizer Gründlichkeit</span> mit modernen Techniken.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-6">
+                        <a href="#contact" class="bg-olive-600 hover:bg-olive-500 text-white font-bold py-5 px-12 rounded-sm shadow-lg transition-all uppercase tracking-widest text-lg text-center">Offerte anfragen</a>
+                        <a href="#services" class="bg-white hover:bg-black hover:text-white text-black font-bold py-5 px-12 rounded-sm transition-all uppercase tracking-widest text-lg text-center">Meine Expertise</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SERVICES -->
+        <section id="services" class="py-32 bg-slate-50">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+                    <div class="max-w-2xl">
+                        <span class="text-olive-600 font-black uppercase tracking-[0.3em] text-xs">Meine Expertise</span>
+                        <h2 class="text-5xl md:text-7xl font-bold text-black mt-4 leading-none">MEISTERHANDWERK <br/><span class="text-olive-600">IN JEDER SCHICHT.</span></h2>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Painting -->
+                    <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
+                        <div class="h-80 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1595844730298-b960ff98fee0?q=80&w=1200" alt="Malerarbeiten" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-10">
+                            <h3 class="text-3xl font-bold text-black mb-4">Malerarbeiten</h3>
+                            <p class="text-slate-500 leading-relaxed font-medium">Vom klassischen Wandanstrich bis zu exklusiven Dekortechniken.</p>
+                        </div>
+                    </div>
+                    <!-- Plastering -->
+                    <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
+                        <div class="h-80 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1503387762-592dea58ef23?q=80&w=1200" alt="Gipserarbeiten" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-10">
+                            <h3 class="text-3xl font-bold text-black mb-4">Gipserarbeiten</h3>
+                            <p class="text-slate-500 leading-relaxed font-medium">Glattputz, Weissputz oder dekorative Strukturen.</p>
+                        </div>
+                    </div>
+                    <!-- Renovation -->
+                    <div class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
+                        <div class="h-80 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=1200" alt="Renovationen" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-10">
+                            <h3 class="text-3xl font-bold text-black mb-4">Renovationen</h3>
+                            <p class="text-slate-500 leading-relaxed font-medium">Komplette Auffrischung für Altbauten und Liegenschaften.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- B2B -->
+        <section id="b2b" class="py-24 bg-black text-white relative">
+            <div class="container mx-auto px-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div>
+                        <span class="text-olive-400 font-bold uppercase tracking-widest text-sm">Partnerschaft</span>
+                        <h2 class="text-4xl md:text-5xl font-bold mt-4 mb-8">VERWALTUNGEN & PRIVATKUNDEN</h2>
+                        <div class="space-y-6">
+                            <div class="bg-white/5 p-8 rounded-lg border border-white/10">
+                                <h3 class="text-2xl font-bold text-olive-400 mb-4">Verwaltungen & KMU</h3>
+                                <p class="text-white/80">Effizienz und Verlässlichkeit bei Mieterwechseln.</p>
+                            </div>
+                            <div class="bg-white/5 p-8 rounded-lg border border-white/10">
+                                <h3 class="text-2xl font-bold text-olive-400 mb-4">Exklusive Privatkunden</h3>
+                                <p class="text-white/80">Zuhause verdient das Beste – mit ästhetischer Perfektion.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTACT -->
+        <section id="contact" class="py-32 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-24">
+                    <div>
+                        <h2 class="text-6xl font-bold text-black mb-12">BEREIT FÜR DEN <br/><span class="text-olive-600 italic">NEUANSTRICH?</span></h2>
+                        <div class="space-y-8">
+                            <div class="flex items-center space-x-6">
+                                <div class="w-16 h-16 bg-black text-white flex items-center justify-center rounded-2xl shadow-xl">📞</div>
+                                <span class="text-2xl font-bold text-black">+41 79 000 00 00</span>
+                            </div>
+                            <div class="flex items-center space-x-6">
+                                <div class="w-16 h-16 bg-black text-white flex items-center justify-center rounded-2xl shadow-xl">✉️</div>
+                                <span class="text-2xl font-bold text-black">info@maler-borer.ch</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-10 rounded-[3rem] border border-slate-200">
+                        <form class="space-y-8">
+                            <input type="text" placeholder="Ihr Name" class="w-full py-4 bg-transparent border-b-2 border-slate-200 outline-none focus:border-olive-600 font-bold text-lg">
+                            <input type="email" placeholder="E-Mail Adresse" class="w-full py-4 bg-transparent border-b-2 border-slate-200 outline-none focus:border-olive-600 font-bold text-lg">
+                            <textarea placeholder="Ihr Projekt..." rows="4" class="w-full py-4 bg-transparent border-b-2 border-slate-200 outline-none focus:border-olive-600 font-bold text-lg"></textarea>
+                            <button class="w-full bg-black hover:bg-olive-600 text-white font-black py-6 rounded-2xl uppercase tracking-[0.3em] shadow-xl transition-all">Absenden</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-black text-white py-12">
+        <div class="container mx-auto px-6 flex justify-between items-center">
+            <span class="text-xl font-bold brand-font uppercase">MALER <span class="text-olive-600">BORER</span></span>
+            <p class="text-white/40 text-sm font-medium">© 2025 Maler- & Gipsergeschäft Borer.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

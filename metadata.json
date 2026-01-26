@@ -1,0 +1,8 @@
+{
+  "name": "Maler Toni Borer - Digitales Atelier",
+  "description": "Exklusives Maler- und Gipsergeschäft mit KI-gestützter Raumplanung und digitalem Büro.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
