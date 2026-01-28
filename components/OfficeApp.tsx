@@ -6,13 +6,17 @@ import SettingsManager from '../modules/settings/SettingsManager';
 import CustomerOverview from '../modules/crm/CustomerOverview';
 import AccountingManager from '../modules/accounting/AccountingManager';
 import ProductOverview from '../modules/products/ProductOverview';
-import SalesManager, { SalesTab } from '../modules/sales/SalesManager';
 import PurchasingManager from '../modules/purchasing/PurchasingManager';
+import QuotesOverview from '../modules/quotes/QuotesOverview';
+import Offerte from '../modules/quotes/Offerte';
+import ProjectOverview from '../modules/projects/ProjectOverview';
+import ProjectManager from '../modules/projects/ProjectManager';
+import InvoiceOverview from '../modules/invoices/InvoiceOverview';
 import DesignShowcase from './DesignShowcase';
 import { Project, OfficeDocument, Expense } from '../officeTypes';
-import { formatMoney, formatDate } from './SharedUI';
+import { formatMoney } from './SharedUI';
 
-type OfficeView = 'dashboard' | 'crm' | 'sales' | 'purchasing' | 'accounting' | 'products' | 'bank' | 'settings' | 'design-lab';
+type OfficeView = 'dashboard' | 'crm' | 'quotes' | 'quotes-simple' | 'projects' | 'projects-admin' | 'invoices' | 'purchasing' | 'accounting' | 'products' | 'bank' | 'settings' | 'design-lab';
 type TimeRange = 'today' | 'week' | 'month' | 'year' | 'custom';
 
 // --- Simple SVG Chart Component ---
@@ -104,8 +108,7 @@ const OfficeApp: React.FC = () => {
   });
 
   // Navigation State
-  const [salesInitialTab, setSalesInitialTab] = useState<SalesTab | undefined>(undefined);
-  const [selectedDocId, setSelectedDocId] = useState<number | undefined>(undefined);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     initSettings();
@@ -240,18 +243,32 @@ const OfficeApp: React.FC = () => {
 
   const handleNavigate = (targetView: 'invoices' | 'expenses', id: number) => {
      if (targetView === 'invoices') {
-        setSelectedDocId(id);
-        setSalesInitialTab('invoices');
-        setView('sales');
+        setSelectedInvoiceId(id);
+        setView('invoices');
      } else {
          setView('purchasing');
      }
   };
 
-  const openSales = (tab?: SalesTab) => {
-      setSalesInitialTab(tab);
-      setSelectedDocId(undefined); // Reset deep link
-      setView('sales');
+  const openQuotes = () => {
+      setView('quotes');
+  };
+
+  const openQuotesSimple = () => {
+      setView('quotes-simple');
+  };
+
+  const openProjects = () => {
+      setView('projects');
+  };
+
+  const openProjectsAdmin = () => {
+      setView('projects-admin');
+  };
+
+  const openInvoices = (docId?: number) => {
+      setSelectedInvoiceId(docId);
+      setView('invoices');
   };
 
   const toggleTimeRange = () => {
@@ -274,12 +291,23 @@ const OfficeApp: React.FC = () => {
     switch (view) {
       case 'crm': return <CustomerOverview onBack={() => { setView('dashboard'); }} />;
       
-      case 'sales': return (
-          <SalesManager 
-            onBack={() => { setView('dashboard'); }}
-            initialTab={salesInitialTab}
-            preselectedDocId={selectedDocId}
-          />
+      case 'quotes': return (
+        <QuotesOverview
+          onBack={() => { setView('dashboard'); }}
+        />
+      );
+      case 'quotes-simple': return (
+        <Offerte
+          onBack={() => { setView('dashboard'); }}
+        />
+      );
+      case 'projects': return <ProjectOverview onBack={() => { setView('dashboard'); }} />;
+      case 'projects-admin': return <ProjectManager onBack={() => { setView('dashboard'); }} />;
+      case 'invoices': return (
+        <InvoiceOverview
+          onBack={() => { setView('dashboard'); setSelectedInvoiceId(undefined); }}
+          preselectedDocId={selectedInvoiceId}
+        />
       );
 
       case 'purchasing': return (
@@ -392,7 +420,7 @@ const OfficeApp: React.FC = () => {
                     <div className="p-8 bg-zinc-50/30 flex flex-col h-full">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-900">Laufende Aufträge</h3>
-                            <button onClick={() => openSales('orders')} className="text-zinc-400 text-[10px] font-bold uppercase hover:text-black transition-colors">Alle →</button>
+                            <button onClick={openProjects} className="text-zinc-400 text-[10px] font-bold uppercase hover:text-black transition-colors">Alle →</button>
                         </div>
 
                         <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2">
@@ -405,7 +433,7 @@ const OfficeApp: React.FC = () => {
                                 dashboardStats.activeProjectsList.map(p => (
                                     <div 
                                         key={p.id} 
-                                        onClick={() => openSales('orders')} 
+                                        onClick={openProjects}
                                         className="group bg-white p-3 rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-olive-300 hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
                                     >
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-zinc-200 group-hover:bg-olive-500 transition-colors"></div>
@@ -426,7 +454,7 @@ const OfficeApp: React.FC = () => {
                             )}
                         </div>
                         
-                        <button onClick={() => openSales('orders')} className="w-full mt-6 py-3 border border-dashed border-zinc-300 text-zinc-400 rounded-xl text-[10px] font-bold uppercase hover:border-olive-400 hover:text-olive-600 hover:bg-olive-50 transition-all">
+                        <button onClick={openProjects} className="w-full mt-6 py-3 border border-dashed border-zinc-300 text-zinc-400 rounded-xl text-[10px] font-bold uppercase hover:border-olive-400 hover:text-olive-600 hover:bg-olive-50 transition-all">
                             + Neuer Auftrag
                         </button>
                     </div>
@@ -436,10 +464,16 @@ const OfficeApp: React.FC = () => {
             {/* --- MODULE GRID (Legacy) --- */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                {/* SALES GROUP */}
-               <button onClick={() => openSales()} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group relative overflow-hidden">
+               <button onClick={openQuotes} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group relative overflow-hidden">
                     <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">💼</span>
-                    <h3 className="font-bold text-sm text-zinc-900">Verkauf</h3>
-                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Offerten & Rechnungen</p>
+                    <h3 className="font-bold text-sm text-zinc-900">Offerten</h3>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Erstellen & Verwalten</p>
+               </button>
+
+               <button onClick={openQuotesSimple} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
+                 <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">📝</span>
+                 <h3 className="font-bold text-sm text-zinc-900">Offerte Schnell</h3>
+                 <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Einfacher Workflow</p>
                </button>
 
                <button onClick={() => setView('purchasing')} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
@@ -460,10 +494,16 @@ const OfficeApp: React.FC = () => {
                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Finanzübersicht</p>
                </button>
 
-               <button onClick={() => openSales('orders')} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
+               <button onClick={openProjects} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
                  <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🏗️</span>
                  <h3 className="font-bold text-sm text-zinc-900">Aufträge</h3>
                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Projektmanagement</p>
+               </button>
+
+               <button onClick={openProjectsAdmin} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
+                 <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🗂️</span>
+                 <h3 className="font-bold text-sm text-zinc-900">Projektverwaltung</h3>
+                 <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Vollständige Übersicht</p>
                </button>
 
                <button onClick={() => setView('products')} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
@@ -472,6 +512,12 @@ const OfficeApp: React.FC = () => {
                  <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Lager & Leistungen</p>
                </button>
                
+               <button onClick={openInvoices} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
+                 <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🧾</span>
+                 <h3 className="font-bold text-sm text-zinc-900">Rechnungen</h3>
+                 <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">Abrechnung & Mahnung</p>
+               </button>
+
                <button onClick={() => setView('bank')} className="bg-white hover:bg-zinc-50 p-6 rounded-2xl shadow-sm border border-zinc-200 transition-all text-left group">
                  <span className="text-2xl mb-3 block group-hover:scale-110 transition-transform duration-300">🏦</span>
                  <h3 className="font-bold text-sm text-zinc-900">Bank</h3>
