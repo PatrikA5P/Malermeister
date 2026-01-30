@@ -59,7 +59,8 @@
     "reference": "Referenz",
     "category": "Kategorie",
     "type": "Typ",
-    "unknown": "Unbekannt"
+    "unknown": "Unbekannt",
+    "export": "Export"
   },
   "status": {
     "draft": "Entwurf",
@@ -236,8 +237,8 @@
     "minStock": "Mindestbestand"
   },
   "projects": {
-    "title": "Projekte",
-    "subtitle": "Projektverwaltung",
+    "title": "Aufträge",
+    "subtitle": "Projektmanagement",
     "newProject": "Neues Projekt",
     "projectName": "Projektname",
     "projectNumber": "Projektnummer",
@@ -247,7 +248,13 @@
     "progress": "Fortschritt",
     "tasks": "Aufgaben",
     "timeTracking": "Zeiterfassung",
-    "materials": "Materialien"
+    "materials": "Materialien",
+    "revenue": "Ertrag",
+    "cost": "Aufwand",
+    "margin": "Marge",
+    "noProjects": "Keine Projekte gefunden",
+    "exportComplete": "Export fertig",
+    "statusPlanning": "Planung"
   },
   "settings": {
     "title": "Einstellungen",
