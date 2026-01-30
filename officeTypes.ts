@@ -2,6 +2,7 @@
 export type DocType = 'quote' | 'invoice' | 'purchase_order' | 'supplier_invoice' | 'supplier_credit';
 export type DocStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'overdue' | 'paid' | 'cancelled';
 export type SupportedCurrency = 'CHF' | 'EUR' | 'USD';
+export type SupportedLanguage = 'de' | 'en' | 'fr' | 'it';
 
 /**
  * Währungskonfiguration mit Rundungsregeln
@@ -304,6 +305,10 @@ export interface OfficeSettings {
   // Währungseinstellungen
   defaultCurrency: SupportedCurrency;
   supportedCurrencies: SupportedCurrency[];
+
+  // Spracheinstellungen
+  language: SupportedLanguage;
+  supportedLanguages: SupportedLanguage[];
 
   // Backup Settings
   backup?: {

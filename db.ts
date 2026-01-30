@@ -90,6 +90,9 @@ export const initSettings = async () => {
       // Währungseinstellungen - Schweiz als Standard
       defaultCurrency: 'CHF',
       supportedCurrencies: ['CHF', 'EUR', 'USD'],
+      // Spracheinstellungen
+      language: 'de',
+      supportedLanguages: ['de', 'en', 'fr', 'it'],
       backup: {
           lastSuccess: undefined,
           provider: 'local',
