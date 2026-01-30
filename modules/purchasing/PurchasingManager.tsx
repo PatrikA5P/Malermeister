@@ -1,59 +1,123 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PurchaseOrderList from './orders/PurchaseOrderList';
 import SupplierInvoiceList from './invoices/SupplierInvoiceList';
 import SupplierCreditList from './credits/SupplierCreditList';
 import GeneralExpenses from './expenses/GeneralExpenses';
 import EmployeeExpenses from './expenses/EmployeeExpenses';
+import { useTranslation } from '../../i18n/useTranslation';
+import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 
-type PurchasingTab = 'orders' | 'invoices' | 'credits' | 'expenses' | 'spesen';
+export type PurchasingTab = 'orders' | 'invoices' | 'credits' | 'expenses' | 'spesen';
+type PurchasingView = 'home' | PurchasingTab;
 
-const PurchasingManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [currentView, setCurrentView] = useState<PurchasingTab>('orders');
+interface PurchasingManagerProps {
+    onBack: () => void;
+    initialTab?: PurchasingTab;
+}
 
-  const NavButton = ({ id, label, icon }: { id: PurchasingTab, label: string, icon: string }) => (
-      <button 
-        onClick={() => setCurrentView(id)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all whitespace-nowrap ${currentView === id ? 'bg-zinc-900 text-white shadow-lg' : 'bg-white border border-zinc-200 text-zinc-500 hover:bg-zinc-50'}`}
-      >
-          <span className="text-lg">{icon}</span>
-          <span className="hidden md:inline">{label}</span>
-      </button>
-  );
+const PurchasingManager: React.FC<PurchasingManagerProps> = ({ onBack, initialTab }) => {
+    const { t } = useTranslation();
+    const [currentView, setCurrentView] = useState<PurchasingView>(initialTab ?? 'home');
 
-  return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
-       {/* Header */}
-       <div className="sticky top-0 bg-slate-50 z-30 pt-6 pb-4 px-6 md:px-12 border-b border-zinc-200/50 backdrop-blur-sm bg-slate-50/90">
-           <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-2">
-             <div className="flex items-center gap-4 w-full md:w-auto">
-                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm">←</button>
-                 <div>
-                    <h2 className="text-2xl font-black brand-font uppercase">Einkauf</h2>
-                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest hidden md:block">Beschaffung & Ausgaben</p>
-                 </div>
-             </div>
-             
-             <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
-                 <NavButton id="orders" label="Bestellungen" icon="📦" />
-                 <NavButton id="invoices" label="Lieferantenrechn." icon="📑" />
-                 <NavButton id="credits" label="Gutschriften" icon="↩️" />
-                 <NavButton id="expenses" label="Aufwendungen" icon="💸" />
-                 <NavButton id="spesen" label="Spesen" icon="☕" />
-             </div>
-           </div>
-       </div>
+    useEffect(() => {
+        if (initialTab) setCurrentView(initialTab);
+    }, [initialTab]);
 
-       {/* Content */}
-       <div className="flex-1 overflow-hidden">
-           {currentView === 'orders' && <PurchaseOrderList />}
-           {currentView === 'invoices' && <SupplierInvoiceList />}
-           {currentView === 'credits' && <SupplierCreditList />}
-           {currentView === 'expenses' && <GeneralExpenses />}
-           {currentView === 'spesen' && <EmployeeExpenses />}
-       </div>
-    </div>
-  );
+    // Navigation handler for module switching via dropdown
+    const handleNavigate = (module: string) => {
+        if (module === 'orders' || module === 'invoices' || module === 'credits' || module === 'expenses' || module === 'spesen') {
+            setCurrentView(module);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 relative">
+            <div className="flex-1 overflow-hidden h-full">
+                {currentView === 'home' && (
+                    <div className="p-6 md:p-12">
+                        <div className="flex items-center gap-4 mb-8">
+                            <Button variant="icon" onClick={onBack} icon="←" />
+                            <div>
+                                <h2 className="text-2xl font-black brand-font uppercase">{t('purchasing.title')}</h2>
+                                <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest hidden md:block">
+                                    {t('purchasing.ordersSubtitle')}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            <Card hoverEffect onClick={() => setCurrentView('orders')} className="cursor-pointer">
+                                <div className="text-center md:text-left">
+                                    <span className="text-3xl mb-3 block">📦</span>
+                                    <h3 className="font-bold text-sm text-zinc-900">{t('purchasing.orders')}</h3>
+                                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">{t('purchasing.ordersSubtitle')}</p>
+                                </div>
+                            </Card>
+                            <Card hoverEffect onClick={() => setCurrentView('invoices')} className="cursor-pointer">
+                                <div className="text-center md:text-left">
+                                    <span className="text-3xl mb-3 block">📑</span>
+                                    <h3 className="font-bold text-sm text-zinc-900">{t('purchasing.invoices')}</h3>
+                                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">{t('purchasing.invoicesSubtitle')}</p>
+                                </div>
+                            </Card>
+                            <Card hoverEffect onClick={() => setCurrentView('credits')} className="cursor-pointer">
+                                <div className="text-center md:text-left">
+                                    <span className="text-3xl mb-3 block">↩️</span>
+                                    <h3 className="font-bold text-sm text-zinc-900">{t('purchasing.credits')}</h3>
+                                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">{t('purchasing.creditsSubtitle')}</p>
+                                </div>
+                            </Card>
+                            <Card hoverEffect onClick={() => setCurrentView('expenses')} className="cursor-pointer">
+                                <div className="text-center md:text-left">
+                                    <span className="text-3xl mb-3 block">💸</span>
+                                    <h3 className="font-bold text-sm text-zinc-900">{t('purchasing.expenses')}</h3>
+                                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">{t('purchasing.expensesSubtitle')}</p>
+                                </div>
+                            </Card>
+                            <Card hoverEffect onClick={() => setCurrentView('spesen')} className="cursor-pointer">
+                                <div className="text-center md:text-left">
+                                    <span className="text-3xl mb-3 block">☕</span>
+                                    <h3 className="font-bold text-sm text-zinc-900">{t('purchasing.employeeExpenses')}</h3>
+                                    <p className="text-[10px] text-zinc-400 uppercase tracking-widest mt-1">{t('purchasing.employeeExpensesSubtitle')}</p>
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+                )}
+
+                {currentView === 'orders' && (
+                    <PurchaseOrderList
+                        onBack={() => setCurrentView('home')}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+                {currentView === 'invoices' && (
+                    <SupplierInvoiceList
+                        onBack={() => setCurrentView('home')}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+                {currentView === 'credits' && (
+                    <SupplierCreditList
+                        onBack={() => setCurrentView('home')}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+                {currentView === 'expenses' && (
+                    <GeneralExpenses
+                        onBack={() => setCurrentView('home')}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+                {currentView === 'spesen' && (
+                    <EmployeeExpenses
+                        onBack={() => setCurrentView('home')}
+                        onNavigate={handleNavigate}
+                    />
+                )}
+            </div>
+        </div>
+    );
 };
 
 export default PurchasingManager;
