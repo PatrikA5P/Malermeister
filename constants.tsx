@@ -5,12 +5,6 @@ import { NavItem, Service, Testimonial, ProjectCategory, LineItem } from './type
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Home', href: '#home' },
   { label: 'KI Designer (A)', href: '#stat' },
-  { label: 'Exklusiv (B)', href: '#stat2' },
-  { label: 'Industrial (C)', href: '#stat3' },
-  { label: 'Modern (D)', href: '#stat4' },
-  { label: 'Minimal (E)', href: '#stat5' },
-  { label: 'Organic (F)', href: '#stat6' },
-  { label: 'Digital (G)', href: '#stat7' },
   { label: 'Verwaltung', href: '#admin' },
   { label: 'Büro Login', href: '#office' },
 ];

@@ -5,7 +5,7 @@ import { Customer } from '../../officeTypes';
 import { Toast, ToastType } from '../../components/SharedUI';
 
 // --- Sub-Components ---
-const InputGroup = ({ label, error, children, className = '' }: { label: string, error?: string, children: React.ReactNode, className?: string }) => (
+const InputGroup = ({ label, error, children, className = '' }: { label: string, error?: string, children?: React.ReactNode, className?: string }) => (
     <div className={`space-y-1 ${className}`}>
         <label className={`text-[10px] font-bold uppercase tracking-widest ${error ? 'text-red-500' : 'text-zinc-400'}`}>
             {label} {error && `— ${error}`}
@@ -377,9 +377,8 @@ const CustomerManager: React.FC<CustomerManagerProps> = ({ onBack, onSelect, ini
            </button>
          </>
        ) : (
-         // EDIT FORM VIEW (Kept as is, just wrapped)
+         // EDIT FORM VIEW (Standardized with other editors)
          <div className="flex flex-col h-full bg-white rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-right-4">
-            {/* ... (Existing Edit Form Content - Reused from previous step) ... */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-white sticky top-0 z-30 shadow-sm">
                 <div className="flex items-center gap-4">
                      <button onClick={() => { if(onSelect) onBack(); else setEditing(null); }} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 hover:bg-black hover:text-white transition-colors">←</button>

@@ -6,6 +6,7 @@ import { InputGroup, SectionHeader } from '../../components/FormComponents';
 import CustomerManager from '../crm/CustomerManager';
 import { formatMoney } from '../../components/SharedUI';
 import { CURRENCIES, UNITS } from '../../officeConstants';
+import { STANDARD_PRODUCTS } from './db';
 
 interface ProductEditorProps {
     initialProduct: Product;
@@ -19,6 +20,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
     const [settings, setSettings] = useState<any>(null);
     const [showSupplierOverlay, setShowSupplierOverlay] = useState(false);
     const [supplierName, setSupplierName] = useState('');
+    const [existingGroups, setExistingGroups] = useState<string[]>([]);
 
     useEffect(() => {
         const load = async () => {
@@ -26,6 +28,17 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
             const s = await db.settings.toArray();
             setSettings(s[0]);
             
+            // Load existing products from DB
+            const allProducts = await db.products.toArray();
+            
+            // Combine DB products with Standard products to get all potential groups
+            // using 'productGroup' property as primary source
+            const sourceList = [...allProducts, ...STANDARD_PRODUCTS];
+            
+            // Extract unique groups
+            const groups = Array.from(new Set(sourceList.map(p => p.productGroup || p.group).filter(g => !!g))).sort();
+            setExistingGroups(groups as string[]);
+
             // Resolve Supplier Name if ID exists
             if (initialProduct.supplierId) {
                 const supp = await db.customers.get(initialProduct.supplierId);
@@ -158,7 +171,16 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ initialProduct, onSave, o
 
                         <div className="grid grid-cols-2 gap-4">
                             <InputGroup label="Gruppe / Kategorie">
-                                <input className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm" value={editing.group || ''} onChange={e => setEditing({...editing, group: e.target.value})} placeholder="z.B. Farben" />
+                                <input 
+                                    className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm font-bold" 
+                                    value={editing.productGroup || ''} 
+                                    onChange={e => setEditing({...editing, productGroup: e.target.value, group: e.target.value})} 
+                                    placeholder="Wählen oder neu erstellen..." 
+                                    list="group-options"
+                                />
+                                <datalist id="group-options">
+                                    {existingGroups.map(g => <option key={g} value={g} />)}
+                                </datalist>
                             </InputGroup>
                             <InputGroup label="Ansprechpartner Intern">
                                 <input className="w-full border p-3 rounded-xl bg-zinc-50 outline-none text-sm" value={editing.contactPerson || ''} onChange={e => setEditing({...editing, contactPerson: e.target.value})} />

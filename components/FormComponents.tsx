@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 
-export const InputGroup = ({ label, error, children, className = '' }: { label: string, error?: string, children: React.ReactNode, className?: string }) => (
+export const InputGroup = ({ label, error, children, className = '' }: { label: string, error?: string, children?: React.ReactNode, className?: string }) => (
     <div className={`space-y-1 ${className}`}>
         <label className={`text-[10px] font-bold uppercase tracking-widest ${error ? 'text-red-500' : 'text-zinc-400'}`}>
             {label} {error && `— ${error}`}

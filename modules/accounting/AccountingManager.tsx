@@ -26,6 +26,7 @@ export interface LedgerBooking {
 
 const AccountingManager: React.FC<{ onBack: () => void, onNavigate: (view: 'invoices' | 'expenses', id: number) => void }> = ({ onBack, onNavigate }) => {
   const [currentView, setCurrentView] = useState<AccountingView>('journal');
+  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
   const [ledger, setLedger] = useState<LedgerBooking[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [groups, setGroups] = useState<AccountGroup[]>([]);
@@ -94,6 +95,11 @@ const AccountingManager: React.FC<{ onBack: () => void, onNavigate: (view: 'invo
     setLedger(bookings);
   };
 
+  const handleGoToAccount = (accountId: number) => {
+      setSelectedAccountId(accountId);
+      setCurrentView('sheet');
+  };
+
   const NavButton = ({ id, label, icon }: { id: AccountingView, label: string, icon: string }) => (
       <button 
         onClick={() => setCurrentView(id)}
@@ -138,7 +144,10 @@ const AccountingManager: React.FC<{ onBack: () => void, onNavigate: (view: 'invo
            )}
 
            {currentView === 'sheet' && (
-               <AccountSheet onBack={() => setCurrentView('accounts')} />
+               <AccountSheet 
+                    onBack={() => setCurrentView('accounts')} 
+                    preselectedAccountId={selectedAccountId}
+               />
            )}
 
            {currentView === 'journal' && (
@@ -150,11 +159,7 @@ const AccountingManager: React.FC<{ onBack: () => void, onNavigate: (view: 'invo
                    accounts={accounts} 
                    groups={groups} 
                    ledger={ledger} 
-                   onSelectAccount={(id: number) => { 
-                       // Logic to switch to sheet could go here if we pass state up, 
-                       // but for now keeping views mostly independent
-                       console.log("Details for", id);
-                   }}
+                   onSelectAccount={handleGoToAccount}
                />
            )}
 
@@ -163,7 +168,7 @@ const AccountingManager: React.FC<{ onBack: () => void, onNavigate: (view: 'invo
                    accounts={accounts} 
                    groups={groups} 
                    ledger={ledger}
-                   onSelectAccount={() => {}} 
+                   onSelectAccount={handleGoToAccount} 
                />
            )}
        </div>

@@ -34,6 +34,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ initialDoc, onBack, onS
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<any>(null);
+  const isDirty = editing ? JSON.stringify(editing) !== originalDoc : false;
 
   useEffect(() => { loadData(); }, []);
 
@@ -115,6 +116,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ initialDoc, onBack, onS
       const docToSave = { ...editing, totalNet: net, totalTax: tax, totalGross: gross };
       
       await onSave(docToSave);
+      setOriginalDoc(JSON.stringify(docToSave));
   };
 
   // ... (Item Logic similar to before, simplified for brevity)
@@ -277,11 +279,21 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({ initialDoc, onBack, onS
           
           <div className="bg-white border-t border-zinc-200 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-40">
               <div className="flex justify-between items-center max-w-4xl mx-auto gap-4">
-                  <button onClick={closeEditor} className="text-zinc-400 font-bold uppercase text-xs px-2 hover:text-black">Abbrechen</button>
-                  <div className="flex gap-3">
-                      <button onClick={() => { if(editing.id) setShowActionMenu(true); else alert("Bitte erst speichern."); }} className="bg-zinc-100 text-zinc-800 w-12 h-12 flex items-center justify-center rounded-xl font-bold text-lg hover:bg-zinc-200">⋮</button>
-                      <button onClick={handleSaveInternal} className="bg-olive-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs shadow-lg">Speichern</button>
-                  </div>
+                  {!isDirty ? (
+                      <>
+                          <button onClick={closeEditor} className="text-zinc-400 font-bold uppercase text-xs px-2 hover:text-black">Zurück</button>
+                          <div className="flex gap-3">
+                              <button onClick={() => { if(editing.id) setShowActionMenu(true); else alert("Bitte erst speichern."); }} className="bg-zinc-100 text-zinc-800 w-12 h-12 flex items-center justify-center rounded-xl font-bold text-lg hover:bg-zinc-200">⋮</button>
+                          </div>
+                      </>
+                  ) : (
+                      <>
+                          <button onClick={closeEditor} className="text-zinc-400 font-bold uppercase text-xs px-2 hover:text-black">Abbrechen</button>
+                          <div className="flex gap-3">
+                              <button onClick={handleSaveInternal} className="bg-olive-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs shadow-lg">Speichern</button>
+                          </div>
+                      </>
+                  )}
               </div>
           </div>
       </div>

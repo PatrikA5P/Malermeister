@@ -20,6 +20,14 @@ export interface OfficeAddress {
   skype?: string;
 }
 
+export interface AuthUser {
+    id: string;
+    email: string;
+    companyId: string; // The Tenant ID
+    role: 'owner' | 'admin' | 'worker';
+    name: string;
+}
+
 export interface Customer {
   id?: number;
   type: 'private' | 'business';
@@ -105,6 +113,12 @@ export interface Product {
 
   // Tiers
   pricingTiers?: ProductTier[];
+
+  // Additional fields
+  productGroup?: string;
+  productSubGroup?: string;
+  materialGroup?: string;
+  isTemplate?: boolean;
 }
 
 export interface AccountGroup {
@@ -150,6 +164,14 @@ export interface AuditEvent {
   meta?: Record<string, any>;
 }
 
+export interface DocumentAttachment {
+  id: string;
+  name: string;
+  type: string;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface OfficeDocument {
   id?: number;
   docNumber: string;
@@ -181,6 +203,7 @@ export interface OfficeDocument {
   
   relatedQuoteId?: number;
   auditTrail?: AuditEvent[];
+  attachments?: DocumentAttachment[];
 }
 
 export interface Expense {
@@ -259,4 +282,33 @@ export interface OfficeSettings {
   };
   users: TeamUser[];
   currentUser?: TeamUser;
+  // Backup Settings
+  backup?: {
+      lastSuccess?: string; // ISO Date
+      provider?: 'google' | 'onedrive' | 'local';
+      autoInterval?: 'daily' | 'manual';
+  };
+}
+
+// --- BACKUP & QUEUE TYPES ---
+
+export type BackupJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type BackupJobType = 'auto_restore' | 'manual_export';
+
+export interface BackupJob {
+    id?: number;
+    type: BackupJobType;
+    status: BackupJobStatus;
+    createdAt: string;
+    attempts: number;
+    lastError?: string;
+}
+
+export interface BackupLog {
+    id?: number;
+    jobId: number;
+    timestamp: string;
+    status: 'success' | 'error';
+    details: string;
+    sizeBytes?: number;
 }

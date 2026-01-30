@@ -4,7 +4,7 @@ import { db } from '../../db';
 import { Customer } from '../../officeTypes';
 import { Toast, ToastType } from '../../components/SharedUI';
 import CustomerEditor from './CustomerEditor';
-import { ModuleHeader, SearchToolbar } from '../../components/OfficeUI';
+import { ModuleHeader, SearchToolbar } from '../../components/ui/Layouts';
 
 interface CustomerOverviewProps {
     onBack: () => void;
@@ -150,7 +150,7 @@ const CustomerOverview: React.FC<CustomerOverviewProps> = ({ onBack, onSelect, i
                onSearchChange={setSearchTerm}
                placeholder="Kontakt suchen..."
                onFilterClick={() => setShowFilters(!showFilters)}
-               isFilterActive={showFilters}
+               filterActive={showFilters}
                onNewClick={() => createNew(customers)}
                newLabel="Erfassen"
            />

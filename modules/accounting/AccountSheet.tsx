@@ -7,11 +7,12 @@ import { LedgerBooking } from './AccountingManager';
 
 interface AccountSheetProps {
     onBack: () => void;
+    preselectedAccountId?: number;
 }
 
-const AccountSheet: React.FC<AccountSheetProps> = ({ onBack }) => {
+const AccountSheet: React.FC<AccountSheetProps> = ({ onBack, preselectedAccountId }) => {
     const [accounts, setAccounts] = useState<Account[]>([]);
-    const [selectedAccountId, setSelectedAccountId] = useState<number | string>('');
+    const [selectedAccountId, setSelectedAccountId] = useState<number | string>(preselectedAccountId || '');
     const [ledger, setLedger] = useState<LedgerBooking[]>([]);
     const [filteredEntries, setFilteredEntries] = useState<LedgerBooking[]>([]);
     
@@ -21,6 +22,11 @@ const AccountSheet: React.FC<AccountSheetProps> = ({ onBack }) => {
     useEffect(() => {
         loadData();
     }, []);
+
+    // Effect for preselection if passed later or initially
+    useEffect(() => {
+        if (preselectedAccountId) setSelectedAccountId(preselectedAccountId);
+    }, [preselectedAccountId]);
 
     useEffect(() => {
         if (selectedAccountId) {

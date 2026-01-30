@@ -1,21 +1,27 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../db';
 import { Project, Customer } from '../../officeTypes';
-import { Toast, ToastType } from '../../components/SharedUI';
+import { Toast, ToastType, formatMoney } from '../../components/SharedUI';
+import { ModuleHeader, SearchToolbar } from '../../components/ui/Layouts';
+import { Table, TableColumn } from '../../components/ui/Table';
+import { Badge } from '../../components/ui/Badge';
+import ProjectEditor from '../sales/orders/ProjectEditor'; // Reusing existing editor for now
 
 const ProjectManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  // Data
   const [projects, setProjects] = useState<Project[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [stats, setStats] = useState<Record<number, {revenue: number, cost: number}>>({});
   
-  // UI
   const [editing, setEditing] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'planning' | 'done'>('active');
   const [toast, setToast] = useState<{msg: string, type: ToastType} | null>(null);
+
+  // Table State
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'startDate', direction: 'desc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => { loadData(); }, []);
 
@@ -24,7 +30,7 @@ const ProjectManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setProjects(p);
     setCustomers(await db.customers.toArray());
     
-    // Stats calculation (kept from original)
+    // Calculate Stats
     const docs = await db.documents.toArray();
     const exps = await db.expenses.toArray();
     const newStats: Record<number, {revenue: number, cost: number}> = {};
@@ -37,10 +43,9 @@ const ProjectManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     setStats(newStats);
   };
 
-  const save = async () => {
-    if (!editing) return;
-    if (editing.id) await db.projects.update(editing.id, editing);
-    else await db.projects.add(editing);
+  const handleSave = async (project: Project) => {
+    if (project.id) await db.projects.update(project.id, project);
+    else await db.projects.add(project);
     setEditing(null);
     loadData();
     setToast({ msg: 'Auftrag gespeichert', type: 'success' });
@@ -60,177 +65,110 @@ const ProjectManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       return c ? (c.companyName || `${c.firstName} ${c.lastName}`) : 'Unbekannt';
   };
 
-  const handleExport = () => {
-      const headers = ['Projekt', 'Kunde', 'Status', 'Startdatum', 'Budget', 'Ertrag', 'Aufwand'];
-      const rows = projects.map(p => {
-          const s = stats[p.id!] || { revenue: 0, cost: 0 };
-          return [p.name, getCustomerName(p.customerId), p.status, p.startDate, p.budget, s.revenue, s.cost]
-            .map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';');
-      });
-      const csv = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Auftraege_Export.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setToast({ msg: 'Export fertig', type: 'success' });
+  // Filter & Sort
+  const handleSort = (key: string) => {
+      setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
   };
 
-  // Filter
-  const filteredProjects = projects.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === 'all' || p.status === filterStatus;
-      return matchesSearch && matchesStatus;
-  });
+  const filteredProjects = useMemo(() => {
+      let data = [...projects];
+      if (searchTerm) {
+          const s = searchTerm.toLowerCase();
+          data = data.filter(p => p.name.toLowerCase().includes(s));
+      }
+      if (activeTab === 'active') data = data.filter(p => p.status === 'active');
+      if (activeTab === 'planning') data = data.filter(p => p.status === 'planning');
+      if (activeTab === 'done') data = data.filter(p => p.status === 'completed' || p.status === 'archived');
+
+      return data.sort((a: any, b: any) => {
+          if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+          if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+          return 0;
+      });
+  }, [projects, searchTerm, activeTab, sortConfig]);
+
+  const paginatedData = useMemo(() => {
+      const start = (currentPage - 1) * rowsPerPage;
+      return filteredProjects.slice(start, start + rowsPerPage);
+  }, [filteredProjects, currentPage, rowsPerPage]);
+
+  const columns: TableColumn<Project>[] = [
+      { key: 'name', label: 'Projekt', sortable: true, render: (p) => <span className="font-bold text-zinc-900">{p.name}</span> },
+      { key: 'customerId', label: 'Kunde', sortable: true, render: (p) => getCustomerName(p.customerId) },
+      { key: 'status', label: 'Status', render: (p) => <Badge label={p.status} /> },
+      { key: 'startDate', label: 'Start', sortable: true, width: '100px' },
+      { key: 'stats', label: 'Finanzen', align: 'right', render: (p) => {
+          const s = stats[p.id!] || {revenue:0, cost:0};
+          const margin = s.revenue - s.cost;
+          return (
+              <div className="flex flex-col items-end text-[10px]">
+                  <span className="font-bold">{formatMoney(s.revenue)}</span>
+                  <span className={`${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>Gewinn: {formatMoney(margin)}</span>
+              </div>
+          );
+      }},
+      { key: 'actions', label: '', width: '50px', align: 'right', render: (p) => (
+          <button onClick={(e) => { e.stopPropagation(); setEditing(p); }} className="p-2 hover:bg-zinc-100 rounded text-zinc-400 hover:text-black">✏️</button>
+      )}
+  ];
+
+  const Tabs = (
+      <div className="flex bg-zinc-100 p-1 rounded-xl mr-auto">
+        {[{id:'active',l:'Laufend'},{id:'planning',l:'Planung'},{id:'done',l:'Erledigt'},{id:'all',l:'Alle'}].map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${activeTab === t.id ? 'bg-white shadow text-black' : 'text-zinc-500'}`}>{t.l}</button>
+        ))}
+      </div>
+  );
+
+  if (editing) {
+      return (
+          <ProjectEditor 
+            initialProject={editing}
+            customers={customers}
+            onSave={handleSave}
+            onCancel={() => setEditing(null)}
+          />
+      );
+  }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
+    <div className="h-full flex flex-col bg-slate-50">
        {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-       {!editing ? (
-         <>
-           <div className="sticky top-0 bg-slate-50 z-20 pt-6 pb-4 px-6 md:px-12 border-b border-zinc-200/50 backdrop-blur-sm bg-slate-50/90">
-             <div className="flex justify-between items-center mb-6">
-                 <div className="flex items-center gap-4">
-                     <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm">←</button>
-                     <div>
-                        <h2 className="text-2xl font-black brand-font uppercase">Aufträge</h2>
-                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest hidden md:block">Projektmanagement</p>
-                     </div>
-                 </div>
-                 
-                 <div className="flex items-center gap-6">
-                    <div className="text-right hidden md:block">
-                        <span className="text-3xl font-black brand-font text-zinc-900">{projects.length}</span>
-                        <span className="text-[10px] font-bold uppercase text-zinc-400 block tracking-widest">Projekte</span>
-                    </div>
-                    <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-lg text-zinc-600 font-bold uppercase text-[10px] hover:border-zinc-400 hover:text-black transition-all shadow-sm">
-                        <span className="hidden md:inline">Export</span>
-                        <span>⬇</span>
-                    </button>
-                 </div>
-             </div>
-
-             <div className="flex gap-3">
-                 <div className="relative flex-1 transition-all">
-                      <input className="w-full border border-zinc-200 p-3 pl-10 rounded-xl text-sm outline-none focus:border-olive-600 shadow-sm bg-white font-bold" placeholder="Suchen..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                      <span className="absolute left-3.5 top-3.5 text-zinc-400 text-sm">🔍</span>
-                 </div>
-                 <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-2 px-4 py-3 rounded-xl border font-bold uppercase text-xs transition-all shadow-sm ${showFilters ? 'bg-olive-50 border-olive-200 text-olive-700' : 'bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300'}`}>
-                    <span className="hidden md:inline">Filter</span><span>⚡</span>
-                 </button>
-                 <button onClick={createNew} className="hidden md:flex bg-zinc-900 hover:bg-olive-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase transition-all shadow-lg whitespace-nowrap items-center gap-2">
-                     <span>+</span><span>Erfassen</span>
-                 </button>
-             </div>
-
-             {showFilters && (
-                <div className="mt-4 p-4 bg-white border border-zinc-200 rounded-xl shadow-sm animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-bold uppercase text-zinc-400 mb-2 block">Status Filter</label>
-                    <div className="flex flex-wrap gap-2">
-                        {['all', 'planning', 'active', 'completed', 'archived'].map(s => (
-                            <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase border transition-all ${filterStatus === s ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-zinc-50 text-zinc-500 border-zinc-100 hover:border-zinc-300'}`}>
-                                {s === 'all' ? 'Alle' : s}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-             )}
+       <ModuleHeader 
+           title="Aufträge"
+           subtitle="Projektmanagement"
+           onBack={onBack}
+           stats={[{value: projects.length, label: 'Projekte'}]}
+       >
+           <div className="mt-4">
+               <SearchToolbar 
+                   searchTerm={searchTerm}
+                   onSearchChange={setSearchTerm}
+                   placeholder="Projekt suchen..."
+                   startAction={Tabs}
+                   onNewClick={createNew}
+                   newLabel="Auftrag"
+               />
            </div>
+       </ModuleHeader>
 
-           <div className="flex-1 overflow-y-auto px-6 md:px-12 pb-24 pt-4">
-             <div className="space-y-3">
-               {filteredProjects.map(p => {
-                 const stat = stats[p.id!] || { revenue: 0, cost: 0 };
-                 const margin = stat.revenue - stat.cost;
-                 return (
-                   <div key={p.id} onClick={() => setEditing(p)} className="relative p-4 rounded-xl border border-zinc-200 bg-white shadow-sm transition-all cursor-pointer hover:border-olive-400 active:scale-[0.98] group">
-                      <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-base truncate pr-2 text-zinc-900">{p.name}</h4>
-                          <span className={`text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-widest ${p.status === 'active' ? 'bg-olive-100 text-olive-700' : 'bg-zinc-100 text-zinc-500'}`}>
-                              {p.status}
-                          </span>
-                      </div>
-                      <p className="text-xs text-zinc-500 font-medium mb-3 truncate">{getCustomerName(p.customerId)}</p>
-                      
-                      {/* Financial Mini-Stats */}
-                      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-50 text-[10px]">
-                          <div>
-                              <span className="block font-bold text-zinc-400 uppercase tracking-wider">Ertrag</span>
-                              <span className="block font-bold text-zinc-900">CHF {stat.revenue.toFixed(0)}</span>
-                          </div>
-                          <div>
-                              <span className="block font-bold text-zinc-400 uppercase tracking-wider">Aufwand</span>
-                              <span className="block font-bold text-red-700">CHF {stat.cost.toFixed(0)}</span>
-                          </div>
-                          <div className="text-right">
-                              <span className="block font-bold text-zinc-400 uppercase tracking-wider">Marge</span>
-                              <span className={`block font-bold ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>CHF {margin.toFixed(0)}</span>
-                          </div>
-                      </div>
-                   </div>
-                 );
-               })}
-               {filteredProjects.length === 0 && <div className="text-center text-zinc-400 py-10">Keine Projekte gefunden.</div>}
-             </div>
-           </div>
-
-           <button onClick={createNew} className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-zinc-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-olive-600 transition-all z-50 active:scale-90">
-               <span className="text-2xl">+</span>
-           </button>
-         </>
-       ) : (
-         <div className="flex flex-col h-full bg-white rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-right-4">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 bg-white sticky top-0 z-30 shadow-sm">
-                <div className="flex items-center gap-4">
-                     <button onClick={() => setEditing(null)} className="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 hover:bg-black hover:text-white transition-colors">←</button>
-                     <h2 className="text-xl font-black brand-font uppercase">{editing.id ? 'Bearbeiten' : 'Neuer Auftrag'}</h2>
-                </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-zinc-400">Kunde</label>
-                        <select className="w-full border p-3 rounded-xl bg-zinc-50 outline-none" value={editing.customerId} onChange={e => setEditing({...editing, customerId: parseInt(e.target.value)})}>
-                            <option value={0}>Wählen...</option>
-                            {customers.map(c => <option key={c.id} value={c.id}>{c.companyName || `${c.firstName} ${c.lastName}`}</option>)}
-                        </select>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-zinc-400">Status</label>
-                        <select className="w-full border p-3 rounded-xl bg-zinc-50 outline-none" value={editing.status} onChange={e => setEditing({...editing, status: e.target.value as any})}>
-                            <option value="planning">Planung</option><option value="active">Aktiv</option><option value="completed">Abgeschlossen</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-zinc-400">Projektname</label>
-                    <input className="w-full border p-3 rounded-xl bg-zinc-50 outline-none font-bold" placeholder="MFH Renovation..." value={editing.name} onChange={e => setEditing({...editing, name: e.target.value})} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-zinc-400">Startdatum</label>
-                        <input type="date" className="w-full border p-3 rounded-xl bg-zinc-50 outline-none" value={editing.startDate} onChange={e => setEditing({...editing, startDate: e.target.value})} />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-zinc-400">Budget CHF</label>
-                        <input type="number" className="w-full border p-3 rounded-xl bg-zinc-50 outline-none" value={editing.budget || ''} onChange={e => setEditing({...editing, budget: parseFloat(e.target.value)})} />
-                    </div>
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase text-zinc-400">Notizen</label>
-                    <textarea className="w-full border p-3 rounded-xl bg-zinc-50 outline-none h-32 resize-none" value={editing.notes || ''} onChange={e => setEditing({...editing, notes: e.target.value})} />
-                </div>
-            </div>
-            <div className="p-4 border-t border-zinc-100 flex gap-4 bg-white z-40">
-                <button onClick={() => setEditing(null)} className="flex-1 bg-zinc-100 text-zinc-500 py-4 rounded-xl font-bold uppercase text-xs">Abbrechen</button>
-                <button onClick={save} className="flex-1 bg-olive-600 text-white py-4 rounded-xl font-bold uppercase text-xs shadow-lg">Speichern</button>
-            </div>
-         </div>
-       )}
+       <div className="flex-1 p-4 md:p-8 overflow-hidden flex flex-col">
+           <Table 
+               columns={columns}
+               data={paginatedData}
+               rowKey="id"
+               onRowClick={(p) => setEditing(p)}
+               sortConfig={sortConfig}
+               onSort={handleSort}
+               currentPage={currentPage}
+               totalPages={Math.ceil(filteredProjects.length / rowsPerPage)}
+               onPageChange={setCurrentPage}
+               totalItems={filteredProjects.length}
+               rowsPerPage={rowsPerPage}
+               onRowsPerPageChange={setRowsPerPage}
+           />
+       </div>
     </div>
   );
 };

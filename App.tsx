@@ -11,16 +11,14 @@ import AIChat from './components/AIChat';
 import QuoteTool from './components/QuoteTool';
 import OfficeApp from './components/OfficeApp';
 import StatPage from './components/StatPage';
-import StatPage2 from './components/StatPage2';
-import StatPage3 from './components/StatPage3';
-import StatPage4 from './components/StatPage4';
-import StatPage5 from './components/StatPage5';
-import StatPage6 from './components/StatPage6';
-import StatPage7 from './components/StatPage7';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LoginScreen } from './modules/auth/LoginScreen';
 
-const App: React.FC = () => {
-  // Views: 'website', 'stat', 'stat2', 'stat3', 'stat4', 'stat5', 'stat6', 'stat7', 'admin', 'office'
-  const [currentView, setCurrentView] = useState<'website' | 'admin' | 'office' | 'stat' | 'stat2' | 'stat3' | 'stat4' | 'stat5' | 'stat6' | 'stat7'>('website');
+const AppContent: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  
+  // Views: 'website', 'stat', 'admin', 'office'
+  const [currentView, setCurrentView] = useState<'website' | 'admin' | 'office' | 'stat'>('website');
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -34,24 +32,6 @@ const App: React.FC = () => {
         window.scrollTo(0, 0);
       } else if (hash === '#stat') {
         setCurrentView('stat');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat2') {
-        setCurrentView('stat2');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat3') {
-        setCurrentView('stat3');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat4') {
-        setCurrentView('stat4');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat5') {
-        setCurrentView('stat5');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat6') {
-        setCurrentView('stat6');
-        window.scrollTo(0, 0);
-      } else if (hash === '#stat7') {
-        setCurrentView('stat7');
         window.scrollTo(0, 0);
       } else if (hash === '#home' || hash === '') {
         setCurrentView('website');
@@ -70,30 +50,31 @@ const App: React.FC = () => {
       website: '#home',
       admin: '#admin',
       office: '#office',
-      stat: '#stat',
-      stat2: '#stat2',
-      stat3: '#stat3',
-      stat4: '#stat4',
-      stat5: '#stat5',
-      stat6: '#stat6',
-      stat7: '#stat7'
+      stat: '#stat'
     };
     window.location.hash = hashMap[view];
   };
 
-  const isLightPage = ['stat', 'stat2', 'stat4', 'stat5', 'stat6', 'stat7'].includes(currentView);
+  if (isLoading) {
+      return <div className="min-h-screen flex items-center justify-center bg-white"><div className="animate-spin text-4xl">⏳</div></div>;
+  }
+
+  // --- PROTECTED ROUTES ---
+  if (currentView === 'office') {
+      if (!user) {
+          // Pass navigate callback to allow going back to website
+          return <LoginScreen onBack={() => navigateTo('website')} />;
+      }
+      return <OfficeApp onExit={() => navigateTo('website')} />;
+  }
+
+  const isLightPage = ['stat'].includes(currentView);
 
   if (currentView === 'admin') {
     return (
       <div className="min-h-screen bg-slate-50">
         <QuoteTool onBack={() => navigateTo('website')} />
       </div>
-    );
-  }
-
-  if (currentView === 'office') {
-    return (
-        <OfficeApp />
     );
   }
 
@@ -105,12 +86,6 @@ const App: React.FC = () => {
       />
       <main>
         {currentView === 'stat' && <StatPage />}
-        {currentView === 'stat2' && <StatPage2 />}
-        {currentView === 'stat3' && <StatPage3 />}
-        {currentView === 'stat4' && <StatPage4 />}
-        {currentView === 'stat5' && <StatPage5 />}
-        {currentView === 'stat6' && <StatPage6 />}
-        {currentView === 'stat7' && <StatPage7 />}
         {currentView === 'website' && (
           <>
             <Hero />
@@ -125,6 +100,14 @@ const App: React.FC = () => {
       <AIChat />
     </div>
   );
+};
+
+const App: React.FC = () => {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
+    );
 };
 
 export default App;

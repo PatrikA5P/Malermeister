@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   OfficeDocument,
@@ -11,8 +12,10 @@ import {
 import { ConfirmModal, Toast, ToastType, formatMoney, formatDate } from '../../../components/SharedUI';
 import CustomerManager from '../../crm/CustomerManager';
 import ProductManager from '../../products/ProductManager';
+import { ActionBar } from '../../../components/ui/Layouts';
+import { Button } from '../../../components/ui/Button';
 
-// Declare html2pdf for TypeScript since we loaded it via CDN
+// Declare html2pdf for TypeScript
 declare const html2pdf: any;
 
 interface QuoteEditorProps {
@@ -109,7 +112,7 @@ type DraftRow = {
   snapshot: OfficeLineItem; // for Abbrechen
 };
 
-/** -------- SUB-COMPONENTS (Extracted to prevent focus loss) -------- */
+/** -------- SUB-COMPONENTS -------- */
 
 const LineItemCard = React.memo(({
   item,
@@ -137,10 +140,8 @@ const LineItemCard = React.memo(({
 
   const titleRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Focus management for accordion
   useEffect(() => {
     if (isExpanded) {
-        // Small timeout to allow render
         const t = setTimeout(() => titleRef.current?.focus(), 50);
         return () => clearTimeout(t);
     }
@@ -154,7 +155,6 @@ const LineItemCard = React.memo(({
       onDragOver={(e) => onDragOver(e, idx)}
       onDrop={(e) => onDrop(e, idx)}
     >
-      {/* DRAG HANDLE & SORT COLUMN (Left) */}
       <div
         className="w-10 bg-zinc-50 border-r border-zinc-100 flex flex-col items-center justify-center gap-2 cursor-grab active:cursor-grabbing hover:bg-zinc-100 transition-colors"
         draggable
@@ -174,15 +174,12 @@ const LineItemCard = React.memo(({
         </button>
       </div>
 
-      {/* CONTENT (Middle) */}
       <div
         className="flex-1 p-3 min-w-0 cursor-pointer flex flex-col justify-between"
         onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
       >
-        {/* Row 1: Title */}
         <div className="font-black text-zinc-900 text-sm leading-snug break-words mb-2">{item.description || 'Neue Position'}</div>
 
-        {/* Row 2: Details */}
         <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-zinc-500 font-medium font-mono leading-relaxed">
           <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-700 font-bold">
             {Number(item.quantity || 0).toFixed(2)} {item.unit}
@@ -194,7 +191,6 @@ const LineItemCard = React.memo(({
           <span className="text-zinc-400">Netto {formatMoney(net)}</span>
         </div>
 
-        {/* Row 3: Totals */}
         <div className="mt-2 pt-2 border-t border-zinc-50 flex justify-between items-end">
           <div className="text-[10px] font-bold uppercase text-zinc-400">
             MWST {vat.toFixed(1)}% <span className="hidden sm:inline text-zinc-300 ml-1">({formatMoney(vatAmt)})</span>
@@ -206,7 +202,6 @@ const LineItemCard = React.memo(({
         </div>
       </div>
 
-      {/* DELETE BUTTON (Right) */}
       <div className="w-12 border-l border-zinc-100 flex items-center justify-center bg-zinc-50/30">
          <button
           type="button"
@@ -221,7 +216,6 @@ const LineItemCard = React.memo(({
         </button>
       </div>
 
-      {/* EDIT FORM (ACCORDION) */}
       {isExpanded && (
         <div className="absolute inset-x-0 top-full z-10 bg-white border-t border-zinc-100 p-4 shadow-xl -mt-4 rounded-b-2xl cursor-default" onClick={e => e.stopPropagation()}>
           <div className="space-y-4">
@@ -273,7 +267,6 @@ const LineItemCard = React.memo(({
               </div>
             </div>
             
-            {/* Extended Options in Accordion */}
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-50 mt-2">
                  <div>
                     <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-1">MWST</label>
@@ -498,65 +491,47 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
   onConvert,
   onDelete
 }) => {
-  // Doc state (persisted)
   const [doc, setDoc] = useState<OfficeDocument>(() => deepClone(initialDoc));
   const [originalDoc] = useState<string>(() => JSON.stringify(initialDoc));
 
-  // UI state
   const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null);
   const [confirmData, setConfirmData] = useState<any>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [overlay, setOverlay] = useState<'none' | 'customer' | 'product'>('none');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  // Drag & Drop State
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
-
-  // Customer manager mode
   const [customerManagerMode, setCustomerManagerMode] = useState<'search' | 'create' | 'edit'>('search');
-
-  // Local customers list
   const [localCustomers, setLocalCustomers] = useState<Customer[]>(() => customers || []);
-  useEffect(() => setLocalCustomers(customers || []), [customers]);
-
-  // Customer inline search
+  
   const [customerQuery, setCustomerQuery] = useState('');
   const [showCustomerResults, setShowCustomerResults] = useState(false);
   const [showCustomerSearchInline, setShowCustomerSearchInline] = useState(false);
   const customerSearchRef = useRef<HTMLDivElement | null>(null);
 
-  // Product suggestions
   const [activeProductSuggestFor, setActiveProductSuggestFor] = useState<string | null>(null);
-
-  // Expand existing line
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-
-  // Draft rows
   const [draftRows, setDraftRows] = useState<DraftRow[]>([]);
   const draftAreaRef = useRef<HTMLDivElement | null>(null);
-
-  // Refs
   const printContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Computed
+  useEffect(() => setLocalCustomers(customers || []), [customers]);
+
   const isDirty = JSON.stringify(doc) !== originalDoc;
   const isNew = !doc.id;
 
   const vatRates: VatRate[] = (settings as any)?.vatRates || [];
-
   const defaultVatRate = useMemo(() => {
     const r = vatRates?.find((x: any) => x.code === 'N')?.rate;
     return typeof r === 'number' ? r : 8.1;
   }, [vatRates]);
 
   const vatOptions = useMemo(() => {
-    const base = (vatRates || [])
-      .map((v: any) => ({
+    const base = (vatRates || []).map((v: any) => ({
         code: String(v.code ?? ''),
         rate: clampNumber(v.rate, defaultVatRate),
         label: `${clampNumber(v.rate, defaultVatRate).toFixed(1)}%${v.code ? ` (${v.code})` : ''}`
-      }))
-      .filter((x) => Number.isFinite(x.rate));
+      })).filter((x) => Number.isFinite(x.rate));
     const withDefault = base.length ? base : [{ code: 'N', rate: defaultVatRate, label: `${defaultVatRate.toFixed(1)}% (N)` }];
     return uniqBy(withDefault, (x) => `${x.rate}-${x.code}`);
   }, [vatRates, defaultVatRate]);
@@ -588,7 +563,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     [totals, optionalTotals]
   );
 
-  // Ensure defaults
   useEffect(() => {
     if (!isNew) return;
     const intro = (settings as any)?.layouts?.quote?.introText;
@@ -603,7 +577,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     });
   }, [isNew, settings]);
 
-  /** -------- Close inline customer search -------- */
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!showCustomerSearchInline) return;
@@ -619,7 +592,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     return () => document.removeEventListener('mousedown', onDown);
   }, [showCustomerSearchInline]);
 
-  /** -------- PDF & Share Logic -------- */
   const generatePdfBlob = async (): Promise<Blob | null> => {
     if (!printContainerRef.current || typeof html2pdf === 'undefined') {
       setToast({ msg: 'PDF Generator nicht geladen.', type: 'error' });
@@ -628,7 +600,7 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     setIsGeneratingPdf(true);
     const element = printContainerRef.current;
     const opt = {
-      margin: [10, 10, 10, 10], // mm
+      margin: [10, 10, 10, 10], 
       filename: `${doc.docNumber}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
@@ -686,7 +658,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     }
   };
 
-  /** -------- Actions / Navigation -------- */
   const handleBack = () => {
     const hasDrafts = draftRows.some((r) => isDraftMeaningful(r.data));
     if (hasDrafts || isDirty) {
@@ -748,7 +719,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     });
   };
 
-  /** -------- Customer Logic -------- */
   const selectCustomer = (c: Customer) => {
     const client = getCustomerDisplay(c);
     setDoc((prev) => ({ ...prev, customerId: (c as any).id, client, projectId: undefined }));
@@ -801,8 +771,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     if (!q) return localCustomers.slice(0, 8);
     return localCustomers.filter((c: any) => normalizeCustomerName(c).toLowerCase().includes(q)).slice(0, 8);
   }, [customerQuery, localCustomers]);
-
-  /** -------- Items Logic & Drag/Drop -------- */
 
   const updateItem = (idx: number, patch: Partial<OfficeLineItem>) => {
     setDoc((prev) => {
@@ -861,7 +829,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
   const addDraftRow = () => {
     const data = makeEmptyDraft(defaultVatRate);
     const row: DraftRow = { id: data.id as any, data, mode: 'edit', snapshot: deepClone(data) };
-
     setDraftRows((prev) => [...prev, row]);
     setTimeout(() => draftAreaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), 0);
   };
@@ -944,22 +911,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     setActiveProductSuggestFor(null);
   };
 
-  /** -------- Derived links -------- */
-  const linkedInvoiceNumber = (doc as any).invoiceDocNumber || (doc as any).invoiceNumber;
-  const linkedInvoiceId = (doc as any).invoiceId || (doc as any).convertedToInvoiceId;
-  const linkedOrderNumber = (doc as any).orderDocNumber || (doc as any).orderNumber;
-  const linkedOrderId = (doc as any).orderId || (doc as any).convertedToOrderId;
-
-  const handleOpenOrder = () => {
-    setToast({ msg: `Öffne Auftrag ${linkedOrderNumber || linkedOrderId}...`, type: 'info' });
-  };
-
-  const handleOpenInvoice = () => {
-    setToast({ msg: `Öffne Rechnung ${linkedInvoiceNumber || linkedInvoiceId}...`, type: 'info' });
-  };
-
-  /** -------- Sub UI -------- */
-
   const ActionMenuOverlay = () => (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in"
@@ -1020,8 +971,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
     </div>
   );
 
-  /** -------- Render -------- */
-
   return (
     <div className="flex flex-col h-screen bg-slate-50 relative">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
@@ -1037,7 +986,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
         </div>
       )}
 
-      {/* OVERLAYS */}
       {overlay === 'customer' && (
         <div className="fixed inset-0 z-[60] bg-white overflow-y-auto">
           <CustomerManager
@@ -1062,7 +1010,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
         </div>
       )}
 
-      {/* HEADER (Screen Only) */}
       <div className="bg-white border-b border-zinc-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm print:hidden">
         <div className="flex items-center gap-4">
           <button
@@ -1088,10 +1035,7 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-40 print:p-0 print:overflow-visible bg-slate-50 print:bg-white">
-        {/* PRINT LAYOUT (Hidden from screen but rendered for HTML2PDF) */}
-        {/* Fix: Use absolute off-screen positioning instead of hidden so html2canvas can render it */}
         <div
           ref={printContainerRef}
           id="print-content"
@@ -1137,7 +1081,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             <div className="whitespace-pre-wrap text-sm text-zinc-700">{doc.notes}</div>
           </div>
 
-          {/* Positionen */}
           <div className="space-y-4 mt-8">
             <div className="flex border-b-2 border-black pb-2 mb-4 text-xs font-bold uppercase">
               <div className="w-12">Pos.</div>
@@ -1204,13 +1147,10 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
           <div className="mt-8 pt-8 border-t border-zinc-100 text-sm whitespace-pre-wrap break-inside-avoid">{doc.footer}</div>
         </div>
 
-        {/* SCREEN CONTENT */}
         <div className="print:hidden space-y-6 max-w-5xl mx-auto">
-          {/* 1) Kunde & Projekt */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <h3 className="font-black uppercase text-xs text-zinc-400 tracking-widest mb-4">Empfänger</h3>
 
-            {/* Inline Suche: identisch wie bei "noch kein Kunde", aber schliesst ohne den bestehenden zu entfernen */}
             {!doc.client?.name || showCustomerSearchInline ? (
               <div ref={customerSearchRef} className="relative">
                 <input
@@ -1289,7 +1229,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
               </div>
             )}
 
-            {/* Buttons Below Customer Card */}
             {doc.customerId && (
               <div className="mt-4 flex gap-3">
                 <button
@@ -1325,7 +1264,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             </div>
           </div>
 
-          {/* 2) Kopfdaten */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <h3 className="font-black uppercase text-xs text-zinc-400 mb-4 tracking-widest">Kopfdaten</h3>
             <div className="space-y-4">
@@ -1390,11 +1328,9 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             </div>
           </div>
 
-          {/* 3) Abrechnung */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <h3 className="font-black uppercase text-xs text-zinc-400 mb-4 tracking-widest">Abrechnung</h3>
 
-            {/* Normale Positionen */}
             <div className="space-y-3">
               {normalItems.length === 0 ? (
                 <div className="text-sm text-zinc-400 font-bold bg-zinc-50 border border-zinc-200 rounded-xl p-4">
@@ -1426,7 +1362,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
               )}
             </div>
 
-            {/* Drafts */}
             <div ref={draftAreaRef} className="mt-6 space-y-4">
               {draftRows.map((row) => (
                 <DraftCard
@@ -1456,7 +1391,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
               </button>
             </div>
 
-            {/* Optionale Positionen separat */}
             <div className="mt-8 pt-6 border-t border-zinc-100">
               <h4 className="text-xs font-black uppercase text-zinc-400 tracking-widest mb-4">Optionale Positionen</h4>
               <div className="space-y-3">
@@ -1491,7 +1425,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
               </div>
             </div>
 
-            {/* Totals */}
             <div className="mt-8 pt-6 border-t border-zinc-100 space-y-2">
               <div className="flex justify-between text-sm text-zinc-500">
                 <span>Zwischensumme</span>
@@ -1525,7 +1458,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             </div>
           </div>
 
-          {/* 4) Einleitungstext */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <label className="text-[10px] font-bold uppercase text-zinc-300 mb-2 block">Einleitungstext</label>
             <textarea
@@ -1536,7 +1468,6 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
             />
           </div>
 
-          {/* 5) Fusszeile / Konditionen */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
             <label className="text-[10px] font-bold uppercase text-zinc-300 mb-2 block">Fusszeile / Konditionen</label>
             <textarea
@@ -1546,116 +1477,23 @@ const QuoteEditor: React.FC<QuoteEditorProps> = ({
               placeholder="Zahlungsbedingungen, Ausführung, Gültigkeit..."
             />
           </div>
-
-          {/* Kategorie: Direktlinks (am Ende) */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-100">
-            <h3 className="font-black uppercase text-xs text-zinc-400 mb-4 tracking-widest">Direktlinks</h3>
-            <div className="flex flex-wrap gap-2">
-              {doc.customerId ? (
-                <button
-                  type="button"
-                  onClick={openCustomerEdit}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-black uppercase text-[10px]"
-                >
-                  👤 Kunde
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openCustomerCreate}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-olive-50 hover:bg-olive-100 text-olive-800 font-black uppercase text-[10px]"
-                >
-                  👤 Kunde erfassen
-                </button>
-              )}
-
-              {(linkedOrderId || linkedOrderNumber) && (
-                <button
-                  type="button"
-                  onClick={handleOpenOrder}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-black uppercase text-[10px]"
-                >
-                  📦 Auftrag {linkedOrderNumber ? `(${linkedOrderNumber})` : ''}
-                </button>
-              )}
-
-              {(linkedInvoiceId || linkedInvoiceNumber) && (
-                <button
-                  type="button"
-                  onClick={handleOpenInvoice}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-black uppercase text-[10px]"
-                >
-                  🧾 Rechnung {linkedInvoiceNumber ? `(${linkedInvoiceNumber})` : ''}
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="bg-white border-t border-zinc-200 p-4 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-40 print:hidden">
-        <div className="max-w-4xl mx-auto">
-          {!isDirty ? (
-            <div className="flex items-center justify-between gap-3">
-              <button onClick={handleBack} className="text-zinc-400 font-bold uppercase text-xs px-2 hover:text-black">
-                Zurück
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShare}
-                  className="w-12 h-12 rounded-xl bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center font-black"
-                >
-                  📤
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="w-12 h-12 rounded-xl bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center font-black"
-                >
-                  📄
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="w-12 h-12 rounded-xl bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center font-black"
-                >
-                  🖨️
-                </button>
-                <button
-                  onClick={() => setShowActionMenu(true)}
-                  className="w-12 h-12 rounded-xl bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center font-black text-lg"
-                  title="Mehr Aktionen"
-                >
-                  ⋮
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-4">
-              <button onClick={handleBack} className="text-zinc-400 font-bold uppercase text-xs px-2 hover:text-black">
-                Abbrechen
-              </button>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleSave}
-                  className="bg-olive-600 text-white px-10 py-3 rounded-xl font-black uppercase text-xs shadow-lg hover:bg-olive-700 transition-transform active:scale-95"
-                >
-                  Speichern
-                </button>
-
-                <button
-                  onClick={() => setShowActionMenu(true)}
-                  className="bg-zinc-100 text-zinc-800 w-12 h-12 flex items-center justify-center rounded-xl font-black text-lg hover:bg-zinc-200 transition-colors"
-                  title="Aktionen"
-                >
-                  ⋮
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <ActionBar
+        onCancel={handleBack}
+        onSave={isDirty ? handleSave : undefined}
+        saveLabel="Speichern"
+        onMenu={() => setShowActionMenu(true)}
+      >
+        {!isDirty && (
+            <>
+                <Button variant="ghost" onClick={handleShare} icon="📤" />
+                <Button variant="ghost" onClick={handleDownload} icon="📄" />
+                <Button variant="ghost" onClick={() => window.print()} icon="🖨️" />
+            </>
+        )}
+      </ActionBar>
     </div>
   );
 };
