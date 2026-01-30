@@ -1,243 +1,259 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../db';
 import { Product } from '../../officeTypes';
-import { Toast, ToastType, formatMoney } from '../../components/SharedUI';
+import { Toast, ToastType } from '../../components/SharedUI';
 import ProductEditor from './ProductEditor';
+import { ModuleHeader, SearchToolbar } from '../../components/ui/Layouts';
+import { DataDisplay, DataDisplayColumn } from '../../components/ui/DataDisplay';
+import { Badge } from '../../components/ui/Badge';
+import { BulkAction } from '../../components/ui/Table';
+import { useTranslation } from '../../i18n/useTranslation';
+import { formatMoney } from '../../services/calculationService';
 
 const ProductOverview: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  // Data
-  const [products, setProducts] = useState<Product[]>([]);
-  
-  // UI
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'material' | 'service'>('all');
-  const [toast, setToast] = useState<{msg: string, type: ToastType} | null>(null);
-  
-  // Sorting
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
-    key: 'name',
-    direction: 'asc'
-  });
+    const { t } = useTranslation();
 
-  useEffect(() => { loadData(); }, []);
+    // Data
+    const [products, setProducts] = useState<Product[]>([]);
 
-  const loadData = async () => {
-    setProducts(await db.products.toArray());
-  };
+    // UI
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<'all' | 'material' | 'service'>('all');
+    const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
 
-  const createNew = () => {
-    setEditingProduct({
-        code: '',
-        name: '',
-        type: 'material',
-        unit: 'Stk',
-        price: 0,
-        purchasePrice: 0,
-        accountId: 3000, // Default Revenue
-        currency: 'CHF'
-    });
-  };
+    // Table State
+    const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const handleSave = async (product: Product) => {
-    if (product.id) await db.products.update(product.id, product as any);
-    else await db.products.add(product);
-    setEditingProduct(null);
-    loadData();
-    setToast({ msg: 'Produkt gespeichert', type: 'success' });
-  };
+    useEffect(() => { loadData(); }, []);
 
-  const handleSort = (key: string) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
+    const loadData = async () => {
+        setProducts(await db.products.toArray());
+    };
 
-  // Filter & Sort Logic
-  const filteredProducts = useMemo(() => {
-      return products
-        .filter(p => {
-            const matchesSearch = 
-                p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                p.code.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesTab = activeTab === 'all' || p.type === activeTab;
-            return matchesSearch && matchesTab;
-        })
-        .sort((a: any, b: any) => {
-            const aVal = a[sortConfig.key] || '';
-            const bVal = b[sortConfig.key] || '';
-            if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
+    const createNew = () => {
+        setEditingProduct({
+            code: '',
+            name: '',
+            type: 'material',
+            unit: 'Stk',
+            price: 0,
+            purchasePrice: 0,
+            accountId: 3000,
+            currency: 'CHF'
         });
-  }, [products, searchTerm, activeTab, sortConfig]);
+    };
 
-  if (editingProduct) {
-      return (
-          <ProductEditor 
-            initialProduct={editingProduct}
-            onSave={handleSave}
-            onCancel={() => setEditingProduct(null)}
-          />
-      );
-  }
+    const handleSave = async (product: Product) => {
+        if (product.id) await db.products.update(product.id, product as any);
+        else await db.products.add(product);
+        setEditingProduct(null);
+        loadData();
+        setToast({ msg: t('toast.saved'), type: 'success' });
+    };
 
-  return (
-    <div className="flex flex-col h-full bg-slate-50 relative">
-       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+    const handleSort = (key: string) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
 
-       {/* Header */}
-       <div className="sticky top-0 bg-slate-50 z-20 pt-6 pb-2 px-4 md:px-8 border-b border-zinc-200/50 backdrop-blur-sm bg-slate-50/95">
-         <div className="flex justify-between items-center mb-4">
-             <div className="flex items-center gap-4">
-                 <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-400 hover:text-black hover:border-black transition-all shadow-sm">←</button>
-                 <div>
-                    <h2 className="text-2xl font-black brand-font uppercase">Produkte</h2>
-                 </div>
-             </div>
-             
-             <div className="flex items-center gap-6">
-                <div className="text-right hidden md:block">
-                    <span className="text-3xl font-black brand-font text-zinc-900">{products.length}</span>
-                    <span className="text-[10px] font-bold uppercase text-zinc-400 block tracking-widest">Artikel</span>
+    // Filter & Sort Logic
+    const filteredProducts = useMemo(() => {
+        return products
+            .filter(p => {
+                const matchesSearch =
+                    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    p.code.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesTab = activeTab === 'all' || p.type === activeTab;
+                return matchesSearch && matchesTab;
+            })
+            .sort((a: any, b: any) => {
+                const aVal = a[sortConfig.key] || '';
+                const bVal = b[sortConfig.key] || '';
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+    }, [products, searchTerm, activeTab, sortConfig]);
+
+    const paginatedData = useMemo(() => {
+        const start = (currentPage - 1) * rowsPerPage;
+        return filteredProducts.slice(start, start + rowsPerPage);
+    }, [filteredProducts, currentPage, rowsPerPage]);
+
+    // Columns
+    const columns: DataDisplayColumn<Product>[] = [
+        {
+            key: 'code',
+            label: t('products.articleNumber'),
+            sortable: true,
+            width: '100px',
+            cardPosition: 'meta',
+            render: (p) => <span className="font-mono font-bold text-zinc-500">{p.code}</span>
+        },
+        {
+            key: 'name',
+            label: t('common.name'),
+            sortable: true,
+            cardPosition: 'title',
+            render: (p) => (
+                <div>
+                    <div className="font-bold text-zinc-900">{p.name}</div>
+                    <div className="text-[10px] text-zinc-400">{t('products.unit')}: {p.unit}</div>
                 </div>
-             </div>
-         </div>
+            )
+        },
+        {
+            key: 'type',
+            label: t('products.category'),
+            cardPosition: 'badge',
+            render: (p) => (
+                <Badge label={p.type === 'service' ? 'Dienstleistung' : 'Material'} />
+            )
+        },
+        {
+            key: 'purchasePrice',
+            label: t('products.purchasePrice'),
+            align: 'right',
+            sortable: true,
+            hideOnCard: true,
+            render: (p) => <span className="text-zinc-500">{p.purchasePrice ? formatMoney(p.purchasePrice) : '—'}</span>
+        },
+        {
+            key: 'price',
+            label: t('products.salesPrice'),
+            align: 'right',
+            sortable: true,
+            cardPosition: 'value',
+            render: (p) => <span className="font-bold">{formatMoney(p.price)}</span>
+        },
+        {
+            key: 'margin',
+            label: t('products.margin'),
+            align: 'right',
+            hideOnCard: true,
+            render: (p) => {
+                const margin = (p.purchasePrice && p.price) ? ((p.price - p.purchasePrice) / p.price * 100) : 0;
+                return margin > 0 ? (
+                    <span className={`font-bold ${margin < 20 ? 'text-red-500' : 'text-green-600'}`}>
+                        {margin.toFixed(1)}%
+                    </span>
+                ) : <span className="text-zinc-400">—</span>;
+            }
+        },
+        {
+            key: 'actions',
+            label: '',
+            align: 'right',
+            width: '50px',
+            hideOnCard: true,
+            render: (p) => (
+                <button
+                    onClick={(e) => { e.stopPropagation(); setEditingProduct(p); }}
+                    className="p-2 hover:bg-zinc-100 rounded text-zinc-400 hover:text-black"
+                >
+                    ✏️
+                </button>
+            )
+        }
+    ];
 
-         {/* Toolbar */}
-         <div className="flex flex-col md:flex-row gap-4 pb-4 items-stretch md:items-center">
-             
-             {/* Tabs */}
-             <div className="hidden md:flex bg-zinc-200/50 p-1 rounded-xl mr-auto">
-                {([
-                  { id: 'all', label: 'Alle' },
-                  { id: 'material', label: 'Material' },
-                  { id: 'service', label: 'Dienstleistung' },
-                ] as const).map(tab => (
-                  <button
+    const bulkActions: BulkAction[] = [
+        { label: t('common.delete'), onClick: () => alert('Bulk Delete not implemented'), variant: 'danger' }
+    ];
+
+    // Tabs
+    const Tabs = (
+        <div className="flex bg-zinc-100 p-1 rounded-xl mr-auto">
+            {[
+                { id: 'all', l: t('common.all') },
+                { id: 'material', l: 'Material' },
+                { id: 'service', l: 'Dienstleistung' }
+            ].map(tab => (
+                <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-all ${
-                      activeTab === tab.id ? 'bg-white text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-700'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-             </div>
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${activeTab === tab.id ? 'bg-white shadow text-black' : 'text-zinc-500'}`}
+                >
+                    {tab.l}
+                </button>
+            ))}
+        </div>
+    );
 
-             <div className="flex gap-2 w-full md:w-auto">
-                 <div className="relative flex-1 md:w-64 transition-all">
-                      <input 
-                          className="w-full border border-zinc-200 p-3 pl-10 rounded-xl text-sm outline-none focus:border-olive-600 shadow-sm bg-white font-bold" 
-                          placeholder="Code oder Name..." 
-                          value={searchTerm}
-                          onChange={e => setSearchTerm(e.target.value)}
-                      />
-                      <span className="absolute left-3.5 top-3.5 text-zinc-400 text-sm">🔍</span>
-                 </div>
-                 <button onClick={createNew} className="bg-zinc-900 hover:bg-olive-600 text-white px-6 py-3 rounded-xl text-xs font-black uppercase transition-all shadow-lg whitespace-nowrap flex items-center justify-center gap-2">
-                     <span>+</span><span className="hidden md:inline">Erfassen</span>
-                 </button>
-             </div>
-         </div>
-       </div>
+    if (editingProduct) {
+        return (
+            <ProductEditor
+                initialProduct={editingProduct}
+                onSave={handleSave}
+                onCancel={() => setEditingProduct(null)}
+            />
+        );
+    }
 
-       {/* Content */}
-       <div className="flex-1 overflow-y-auto bg-slate-50">
-         
-         {/* Mobile List */}
-         <div className="md:hidden px-4 pb-24 space-y-3 pt-4">
-             {filteredProducts.map(p => (
-               <div key={p.id} onClick={() => setEditingProduct(p)} className="bg-white p-5 rounded-2xl shadow-sm border border-zinc-100 hover:border-olive-500 transition-all cursor-pointer group">
-                  <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                              <span className="font-mono text-xs bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-500 font-bold">{p.code}</span>
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-black border uppercase ${p.type === 'service' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>
-                                  {p.type === 'service' ? 'DL' : 'MAT'}
-                              </span>
-                          </div>
-                          <p className="font-black text-lg text-zinc-900 leading-tight mb-1">{p.name}</p>
-                          <p className="text-xs text-zinc-400">Einheit: {p.unit}</p>
-                      </div>
-                      <div className="text-right">
-                          <p className="font-black text-zinc-900 text-lg tabular-nums">{formatMoney(p.price)}</p>
-                          {p.purchasePrice && p.purchasePrice > 0 && (
-                              <p className="text-[10px] text-zinc-400 mt-1">Marge: {(((p.price - p.purchasePrice) / p.price) * 100).toFixed(1)}%</p>
-                          )}
-                      </div>
-                  </div>
-               </div>
-             ))}
-         </div>
+    return (
+        <div className="flex flex-col h-full bg-slate-50">
+            {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-         {/* Desktop Table */}
-         <div className="hidden md:block px-8 pb-10 pt-4">
-            <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
-                        <tr>
-                            {[
-                                { k: 'code', l: 'Code' },
-                                { k: 'name', l: 'Bezeichnung' },
-                                { k: 'type', l: 'Art' },
-                                { k: 'unit', l: 'Einheit' },
-                                { k: 'purchasePrice', l: 'EK Preis', r: true },
-                                { k: 'price', l: 'VK Preis', r: true },
-                                { k: 'margin', l: 'Marge', r: true }
-                            ].map(col => (
-                                <th 
-                                    key={col.k}
-                                    onClick={() => handleSort(col.k)}
-                                    className={`p-4 text-[10px] font-bold uppercase text-zinc-500 tracking-wider cursor-pointer hover:text-black hover:bg-zinc-100 transition-colors ${col.r ? 'text-right' : ''}`}
-                                >
-                                    {col.l} {sortConfig.key === col.k && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 text-sm text-zinc-700">
-                        {filteredProducts.map(p => {
-                            const margin = (p.purchasePrice && p.price) ? ((p.price - p.purchasePrice) / p.price * 100) : 0;
-                            return (
-                                <tr key={p.id} onClick={() => setEditingProduct(p)} className="group hover:bg-olive-50/20 transition-colors cursor-pointer">
-                                    <td className="p-4 font-mono text-zinc-500 font-bold">{p.code}</td>
-                                    <td className="p-4 font-bold text-zinc-900">{p.name}</td>
-                                    <td className="p-4">
-                                        <span className={`text-[9px] px-2 py-1 rounded font-black uppercase tracking-widest ${p.type === 'service' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
-                                            {p.type === 'service' ? 'Dienstleistung' : 'Material'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">{p.unit}</td>
-                                    <td className="p-4 text-right tabular-nums text-zinc-500">{p.purchasePrice ? formatMoney(p.purchasePrice) : '-'}</td>
-                                    <td className="p-4 text-right tabular-nums font-bold text-zinc-900">{formatMoney(p.price)}</td>
-                                    <td className="p-4 text-right tabular-nums">
-                                        {margin > 0 ? (
-                                            <span className={`text-xs font-bold ${margin < 20 ? 'text-red-500' : 'text-green-600'}`}>
-                                                {margin.toFixed(1)}%
-                                            </span>
-                                        ) : '-'}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {filteredProducts.length === 0 && (
-                            <tr><td colSpan={7} className="p-12 text-center text-zinc-400 font-bold uppercase tracking-widest text-xs">Keine Produkte gefunden</td></tr>
-                        )}
-                    </tbody>
-                </table>
+            <ModuleHeader
+                title={t('products.title')}
+                subtitle={t('products.subtitle')}
+                onBack={onBack}
+                stats={[{ value: products.length, label: t('common.entries') }]}
+            >
+                <div className="mt-4">
+                    <SearchToolbar
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        placeholder={t('common.search') + '...'}
+                        startAction={Tabs}
+                        onNewClick={createNew}
+                        newLabel={t('products.newProduct')}
+                    />
+                </div>
+            </ModuleHeader>
+
+            <div className="flex-1 p-4 md:p-8 overflow-auto">
+                <DataDisplay
+                    columns={columns}
+                    data={paginatedData}
+                    rowKey="id"
+                    onRowClick={(p) => setEditingProduct(p)}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                    selectedIds={selectedIds}
+                    onSelectRow={(id) => {
+                        const next = new Set(selectedIds);
+                        if (next.has(id)) next.delete(id); else next.add(id);
+                        setSelectedIds(next);
+                    }}
+                    onSelectAll={(ids) => setSelectedIds(new Set(ids))}
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredProducts.length / rowsPerPage)}
+                    onPageChange={setCurrentPage}
+                    totalItems={filteredProducts.length}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={setRowsPerPage}
+                    emptyMessage={t('common.noEntries')}
+                    bulkActions={bulkActions}
+                />
             </div>
-         </div>
-       </div>
 
-       <button onClick={createNew} className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-zinc-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-olive-600 transition-all z-50 active:scale-90">
-           <span className="text-2xl">+</span>
-       </button>
-    </div>
-  );
+            {/* Mobile FAB */}
+            <button
+                onClick={createNew}
+                className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-zinc-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-olive-600 transition-all z-50 active:scale-90"
+            >
+                <span className="text-2xl">+</span>
+            </button>
+        </div>
+    );
 };
 
 export default ProductOverview;

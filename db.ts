@@ -25,7 +25,7 @@ export class OfficeDB extends Dexie {
     (this as any).version(1).stores({
       documents: '++id, docNumber, type, status, date, customerId, projectId, [type+status]',
       expenses: '++id, date, category, projectId, accountId',
-      transactions: '++id, bookingDate, status',
+      transactions: '++id, externalId, bookingDate, status, qrReference',
       settings: '++id',
       customers: '++id, lastName, companyName',
       projects: '++id, customerId, status',
@@ -46,7 +46,7 @@ export const initSettings = async () => {
   if (settingsCount === 0) {
     await db.settings.add({
       companyName: 'Maler Borer',
-      address: { name: 'Maler Borer', street: 'Musterstrasse 1', zip: '8000', city: 'Zürich', email: 'info@maler-borer.ch', website: 'www.maler-borer.ch' },
+      address: { name: 'Maler Borer', street: 'Musterstrasse 1', zip: '8000', city: 'Zürich', country: 'CH', email: 'info@maler-borer.ch', website: 'www.maler-borer.ch' },
       uidMwst: '',
       bankName: '',
       iban: '',
@@ -66,18 +66,18 @@ export const initSettings = async () => {
         { code: '0', rate: 0.0, description: 'Keine MWST' }
       ],
       layouts: {
-        quote: { 
-            showLogo: true, 
-            introText: 'Gerne unterbreiten wir Ihnen folgende Offerte:', 
-            outroText: 'Wir freuen uns auf Ihren Auftrag.', 
+        quote: {
+            showLogo: true,
+            introText: 'Gerne unterbreiten wir Ihnen folgende Offerte:',
+            outroText: 'Wir freuen uns auf Ihren Auftrag.',
             termsSnippet: 'Es gelten die allgemeinen Geschäftsbedingungen (AGB) von Maler Borer.',
             emailSubject: 'Ihre Offerte {nr} von Maler Borer',
             emailBody: 'Guten Tag {kunde},\n\nAnbei erhalten Sie wie besprochen unsere Offerte.\n\nFreundliche Grüsse\nToni Borer'
         },
-        invoice: { 
-            showLogo: true, 
-            introText: 'Für unsere Leistungen erlauben wir uns folgende Rechnung:', 
-            outroText: 'Besten Dank für Ihr Vertrauen.', 
+        invoice: {
+            showLogo: true,
+            introText: 'Für unsere Leistungen erlauben wir uns folgende Rechnung:',
+            outroText: 'Besten Dank für Ihr Vertrauen.',
             termsSnippet: 'Zahlbar innert 30 Tagen netto.',
             emailSubject: 'Rechnung {nr} - Maler Borer',
             emailBody: 'Guten Tag {kunde},\n\nBesten Dank für den Auftrag. Anbei erhalten Sie die Rechnung.\n\nFreundliche Grüsse\nToni Borer'
@@ -87,10 +87,17 @@ export const initSettings = async () => {
       users: [
         { id: '1', name: 'Toni Borer', role: 'admin', permissions: ['read_all', 'write_all', 'export'] }
       ],
+      // Währungseinstellungen - Schweiz als Standard
+      defaultCurrency: 'CHF',
+      supportedCurrencies: ['CHF', 'EUR', 'USD'],
+      // Spracheinstellungen
+      language: 'de',
+      supportedLanguages: ['de', 'en', 'fr', 'it'],
       backup: {
           lastSuccess: undefined,
           provider: 'local',
-          autoInterval: 'daily'
+          autoInterval: 'daily',
+          encryptBackups: true
       }
     });
   }

@@ -1,5 +1,10 @@
 
 import React, { useEffect } from 'react';
+import {
+  formatMoney as formatMoneyService,
+  roundToCurrency,
+  CURRENCY_CONFIGS
+} from '../services/calculationService';
 
 // --- Types ---
 export type ToastType = 'success' | 'error' | 'info';
@@ -74,11 +79,19 @@ export const ConfirmModal = ({
 
 // --- Formatters ---
 
-export const formatMoney = (v: number) =>
-  (Number.isFinite(v) ? v : 0).toLocaleString('de-CH', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+/**
+ * Formatiert einen Geldbetrag mit korrekter Währungsrundung
+ * CHF: Rappenrundung auf 0.05
+ * EUR/USD: Cent-genau auf 0.01
+ */
+export const formatMoney = (v: number, currency: string = 'CHF', showSymbol: boolean = true): string => {
+  return formatMoneyService(v, currency, showSymbol);
+};
+
+/**
+ * Rundet einen Betrag gemäss Währungsregeln (für Berechnungen)
+ */
+export { roundToCurrency };
 
 export const formatDate = (d: string) => {
     if(!d) return '—';
