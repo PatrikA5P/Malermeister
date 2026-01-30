@@ -1,8 +1,18 @@
 
 import { db } from '../db';
 import { BackupJob } from '../officeTypes';
-import JSZip from 'jszip'; 
+import JSZip from 'jszip';
 import { cloudService } from './cloudService';
+import { cryptoService } from './cryptoService';
+
+/**
+ * BACKUP SERVICE MIT VERSCHLÜSSELUNG
+ *
+ * GeBüV-konform:
+ * - Backups werden vor Cloud-Upload AES-256-GCM verschlüsselt
+ * - IV wird im Dateinamen gespeichert für Wiederherstellung
+ * - Lokale Exporte optional verschlüsselt (je nach Einstellung)
+ */
 
 const MAX_RETRIES = 3;
 
@@ -50,23 +60,44 @@ export class BackupService {
             const zipBlob = await this.createZip(data, job.type);
             
             // 3. Upload / Speichern
+            const settings = await db.settings.toArray();
+            const encryptBackups = settings[0]?.backup?.encryptBackups ?? true;
+
             if (job.type === 'manual_export') {
-                this.triggerDownload(zipBlob, `Export_MalerBorer_${new Date().toISOString().split('T')[0]}.zip`);
-            } else {
-                // CLOUD UPLOAD LOGIK
-                if (cloudService.isConnected) {
-                    const filename = `Backup_Auto_${new Date().toISOString()}.zip`;
-                    await cloudService.uploadFile(filename, zipBlob);
-                    console.log(`[Backup] Uploaded to ${cloudService.provider}`);
+                // Manueller Export - optional verschlüsselt
+                if (encryptBackups && cryptoService.isReady()) {
+                    const { encryptedBlob, iv } = await cryptoService.encryptBlob(zipBlob);
+                    // IV im Dateinamen für spätere Entschlüsselung
+                    const filename = `Export_MalerBorer_${new Date().toISOString().split('T')[0]}_enc_${iv}.zip.encrypted`;
+                    this.triggerDownload(encryptedBlob, filename);
+                    console.log('[Backup] Verschlüsselter Export erstellt');
                 } else {
-                    console.warn('[Backup] Cloud not connected, saving locally/skipping.');
+                    this.triggerDownload(zipBlob, `Export_MalerBorer_${new Date().toISOString().split('T')[0]}.zip`);
+                }
+            } else {
+                // CLOUD UPLOAD LOGIK - IMMER verschlüsselt
+                if (cloudService.isConnected) {
+                    if (!cryptoService.isReady()) {
+                        throw new Error('CryptoService nicht initialisiert - Cloud-Backup abgebrochen (Sicherheit)');
+                    }
+
+                    // Verschlüsseln vor Upload
+                    const { encryptedBlob, iv } = await cryptoService.encryptBlob(zipBlob);
+
+                    // IV im Dateinamen speichern für Wiederherstellung
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const filename = `Backup_Auto_${timestamp}_iv_${iv}.encrypted`;
+
+                    await cloudService.uploadFile(filename, encryptedBlob);
+                    console.log(`[Backup] Verschlüsselt hochgeladen zu ${cloudService.provider}`);
+                } else {
+                    console.warn('[Backup] Cloud nicht verbunden, überspringe.');
                 }
                 
                 // Update Settings Last Success
-                const settings = await db.settings.toArray();
                 if (settings.length) {
-                    await db.settings.update(settings[0].id!, { 
-                        backup: { ...settings[0].backup, lastSuccess: new Date().toISOString() } 
+                    await db.settings.update(settings[0].id!, {
+                        backup: { ...settings[0].backup, lastSuccess: new Date().toISOString() }
                     });
                 }
             }
@@ -174,10 +205,119 @@ export class BackupService {
         if (!items || !items.length) return '';
         const header = Object.keys(items[0]);
         const csv = [
-            header.join(';'), 
+            header.join(';'),
             ...items.map(row => header.map(fieldName => JSON.stringify(row[fieldName], (key, value) => value === null ? '' : value)).join(';'))
         ].join('\r\n');
         return csv;
+    }
+
+    /**
+     * Extrahiert IV aus verschlüsseltem Backup-Dateinamen
+     */
+    private extractIvFromFilename(filename: string): string | null {
+        // Format: Backup_Auto_TIMESTAMP_iv_BASE64IV.encrypted
+        // oder: Export_..._enc_BASE64IV.zip.encrypted
+        const ivMatch = filename.match(/(?:_iv_|_enc_)([A-Za-z0-9+/=]+)\.(?:encrypted|zip\.encrypted)$/);
+        return ivMatch ? ivMatch[1] : null;
+    }
+
+    /**
+     * Entschlüsselt und stellt ein Backup wieder her
+     */
+    public async restoreEncryptedBackup(encryptedBlob: Blob, filename: string): Promise<void> {
+        if (!cryptoService.isReady()) {
+            throw new Error('CryptoService nicht initialisiert. Bitte zuerst mit Master-Passwort authentifizieren.');
+        }
+
+        const iv = this.extractIvFromFilename(filename);
+        if (!iv) {
+            throw new Error('Konnte IV nicht aus Dateinamen extrahieren. Ungültiges Backup-Format.');
+        }
+
+        // Entschlüsseln
+        const decryptedBlob = await cryptoService.decryptBlob(encryptedBlob, iv);
+
+        // ZIP entpacken
+        const zip = await JSZip.loadAsync(decryptedBlob);
+
+        // Manifest lesen
+        const manifestFile = zip.file('manifest.json');
+        if (!manifestFile) {
+            throw new Error('Backup ungültig: manifest.json fehlt');
+        }
+
+        const manifest = JSON.parse(await manifestFile.async('string'));
+        console.log('[Backup] Wiederherstellung gestartet:', manifest);
+
+        // Datenbank-Dump finden
+        const dbFile = zip.file('database_dump.json') || zip.file('raw_data.json');
+        if (!dbFile) {
+            throw new Error('Backup ungültig: Keine Datenbankdatei gefunden');
+        }
+
+        const data = JSON.parse(await dbFile.async('string'));
+
+        // Daten wiederherstellen (mit Bestätigung)
+        await this.restoreData(data);
+
+        console.log('[Backup] Wiederherstellung abgeschlossen');
+    }
+
+    /**
+     * Stellt Daten aus Backup in DB wieder her
+     */
+    private async restoreData(data: any): Promise<void> {
+        // Transaktionssicher alle Tabellen aktualisieren
+        await db.transaction('rw', [
+            db.documents, db.customers, db.projects,
+            db.expenses, db.products, db.accounts, db.transactions
+        ], async () => {
+            // Bestehende Daten löschen und neue einfügen
+            if (data.documents?.length) {
+                await db.documents.clear();
+                await db.documents.bulkAdd(data.documents);
+            }
+            if (data.customers?.length) {
+                await db.customers.clear();
+                await db.customers.bulkAdd(data.customers);
+            }
+            if (data.projects?.length) {
+                await db.projects.clear();
+                await db.projects.bulkAdd(data.projects);
+            }
+            if (data.expenses?.length) {
+                await db.expenses.clear();
+                await db.expenses.bulkAdd(data.expenses);
+            }
+            if (data.products?.length) {
+                await db.products.clear();
+                await db.products.bulkAdd(data.products);
+            }
+            if (data.accounts?.length) {
+                await db.accounts.clear();
+                await db.accounts.bulkAdd(data.accounts);
+            }
+            if (data.transactions?.length) {
+                await db.transactions.clear();
+                await db.transactions.bulkAdd(data.transactions);
+            }
+        });
+    }
+
+    /**
+     * Stellt unverschlüsseltes Backup wieder her
+     */
+    public async restoreBackup(zipBlob: Blob): Promise<void> {
+        const zip = await JSZip.loadAsync(zipBlob);
+
+        const dbFile = zip.file('database_dump.json') || zip.file('raw_data.json');
+        if (!dbFile) {
+            throw new Error('Backup ungültig: Keine Datenbankdatei gefunden');
+        }
+
+        const data = JSON.parse(await dbFile.async('string'));
+        await this.restoreData(data);
+        console.log('[Backup] Unverschlüsselte Wiederherstellung abgeschlossen');
     }
 }
 

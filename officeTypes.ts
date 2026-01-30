@@ -1,6 +1,19 @@
 
 export type DocType = 'quote' | 'invoice' | 'purchase_order' | 'supplier_invoice' | 'supplier_credit';
 export type DocStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'overdue' | 'paid' | 'cancelled';
+export type SupportedCurrency = 'CHF' | 'EUR' | 'USD';
+
+/**
+ * Währungskonfiguration mit Rundungsregeln
+ */
+export interface CurrencyConfig {
+  code: SupportedCurrency;
+  symbol: string;
+  name: string;
+  decimalPlaces: number;
+  roundingIncrement: number; // CHF: 0.05 (Rappenrundung), EUR/USD: 0.01
+  locale: string;
+}
 
 export interface OfficeAddress {
   name: string;
@@ -222,14 +235,19 @@ export interface Expense {
 
 export interface BankTransaction {
   id?: number;
+  externalId?: string; // Eindeutige ID aus CAMT-XML für Deduplizierung
   bookingDate: string;
+  valueDate?: string;
   amount: number;
   currency: string;
   counterparty: string;
+  counterpartyIban?: string;
   reference: string;
+  qrReference?: string; // QR-Referenz für automatisches Matching
   details: string;
   matchedDocId?: number;
-  status: 'open' | 'matched' | 'ignored';
+  matchedAmount?: number; // Bei Teilzahlungen
+  status: 'open' | 'matched' | 'partial' | 'ignored';
 }
 
 export interface VatRate {
@@ -282,11 +300,17 @@ export interface OfficeSettings {
   };
   users: TeamUser[];
   currentUser?: TeamUser;
+
+  // Währungseinstellungen
+  defaultCurrency: SupportedCurrency;
+  supportedCurrencies: SupportedCurrency[];
+
   // Backup Settings
   backup?: {
       lastSuccess?: string; // ISO Date
       provider?: 'google' | 'onedrive' | 'local';
       autoInterval?: 'daily' | 'manual';
+      encryptBackups?: boolean; // Verschlüsselung vor Cloud-Upload
   };
 }
 

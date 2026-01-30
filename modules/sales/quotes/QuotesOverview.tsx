@@ -1,13 +1,20 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { db } from '../../../db';
-import { OfficeDocument, Customer, Project, Product, OfficeAddress } from '../../../officeTypes';
+import { OfficeDocument, Customer, Project, Product, OfficeAddress, SupportedCurrency } from '../../../officeTypes';
 import { Toast, ToastType, formatMoney, formatDate } from '../../../components/SharedUI';
 import QuoteEditor from './QuoteEditor';
 import { ModuleHeader, SearchToolbar } from '../../../components/ui/Layouts';
 import { Table, TableColumn, BulkAction } from '../../../components/ui/Table';
 import { Badge } from '../../../components/ui/Badge';
 import { MultiActionButton } from '../../../components/ui/MultiActionButton';
+import {
+  canDeleteDocument,
+  addAuditEvent,
+  AUDIT_EVENTS,
+  initializeDocumentWithAudit
+} from '../../../services/documentGuardService';
+import { calculateDocumentTotals } from '../../../services/calculationService';
 
 interface OffersProps {
   onBack: () => void;
@@ -61,17 +68,20 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
     const year = new Date().getFullYear();
     const num = String(Date.now()).slice(-4);
     let initialClient: OfficeAddress = { name: '', street: '', zip: '', city: '' };
-    
+
     if (customerId) {
       const c = customers.find(x => x.id === customerId);
-      if (c) initialClient = { 
-          name: c.type === 'business' ? c.companyName! : `${c.firstName} ${c.lastName}`, 
-          street: c.address.street, zip: c.address.zip, city: c.address.city, 
-          email: c.address.email, phone: c.address.phone, website: c.address.website 
+      if (c) initialClient = {
+          name: c.type === 'business' ? c.companyName! : `${c.firstName} ${c.lastName}`,
+          street: c.address.street, zip: c.address.zip, city: c.address.city,
+          email: c.address.email, phone: c.address.phone, website: c.address.website
       };
     }
 
-    const newDoc: OfficeDocument = {
+    // Use default currency from settings
+    const defaultCurrency: SupportedCurrency = settings?.defaultCurrency || 'CHF';
+
+    let newDoc: OfficeDocument = {
       docNumber: `O-${year}-${num}`,
       type: 'quote',
       status: 'draft',
@@ -81,10 +91,13 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
       customerId,
       items: [],
       totalNet: 0, totalTax: 0, totalGross: 0, dunningLevel: 0,
-      currency: 'CHF',
+      currency: defaultCurrency,
       notes: settings?.layouts?.quote?.introText || '',
       footer: settings?.layouts?.quote?.outroText || ''
     };
+
+    // Initialize with audit trail
+    newDoc = initializeDocumentWithAudit(newDoc, settings?.currentUser?.name);
 
     setSelectedDoc(newDoc);
     setView('editor');
@@ -100,6 +113,25 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
   };
 
   const handleDeleteDoc = async (id: number) => {
+    // Fetch the document first to check if deletion is allowed
+    const doc = await db.documents.get(id);
+    if (!doc) {
+      setToast({ msg: 'Dokument nicht gefunden', type: 'error' });
+      return;
+    }
+
+    // Check if deletion is allowed (GeBüV compliance)
+    const canDelete = canDeleteDocument(doc);
+    if (!canDelete.allowed) {
+      setToast({ msg: canDelete.reason || 'Löschen nicht erlaubt', type: 'error' });
+      return;
+    }
+
+    // Confirm deletion
+    if (!confirm(`Offerte ${doc.docNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      return;
+    }
+
     await db.documents.delete(id);
     await loadData();
     setToast({ msg: 'Offerte gelöscht', type: 'info' });
@@ -108,7 +140,12 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
   };
 
   const handleConvert = async (doc: OfficeDocument) => {
-    const invoice: OfficeDocument = {
+    // Recalculate totals with proper currency rounding
+    const currency = (doc.currency as SupportedCurrency) || settings?.defaultCurrency || 'CHF';
+    const defaultVatRate = settings?.vatRates?.find((r: any) => r.code === 'N')?.rate || 8.1;
+    const totals = calculateDocumentTotals(doc.items, defaultVatRate, currency);
+
+    let invoice: OfficeDocument = {
       ...doc,
       id: undefined,
       type: 'invoice',
@@ -117,9 +154,31 @@ const QuotesOverview: React.FC<OffersProps> = ({ onBack, preselectedCustomerId }
       date: new Date().toISOString().split('T')[0],
       notes: settings?.layouts?.invoice?.introText,
       footer: settings?.layouts?.invoice?.outroText,
-      relatedQuoteId: doc.id
+      relatedQuoteId: doc.id,
+      // Update totals with properly rounded values
+      totalNet: totals.netTotal,
+      totalTax: totals.vatTotal,
+      totalGross: totals.grossTotal
     };
-    if (!doc.id) await db.documents.add(doc);
+
+    // Add audit trail for conversion
+    invoice = addAuditEvent(invoice, AUDIT_EVENTS.CONVERTED, settings?.currentUser?.name, {
+      sourceDocNumber: doc.docNumber,
+      sourceDocId: doc.id
+    });
+
+    // Also mark the quote as accepted if not already
+    if (doc.id && doc.status === 'sent') {
+      const acceptedQuote = addAuditEvent(doc, AUDIT_EVENTS.STATUS_CHANGED, settings?.currentUser?.name, {
+        from: doc.status,
+        to: 'accepted',
+        reason: 'Converted to invoice'
+      });
+      await db.documents.update(doc.id, { ...acceptedQuote, status: 'accepted', acceptedAt: new Date().toISOString() });
+    } else if (!doc.id) {
+      await db.documents.add(doc);
+    }
+
     await db.documents.add(invoice);
     await loadData();
     setToast({ msg: 'Rechnung erstellt!', type: 'success' });

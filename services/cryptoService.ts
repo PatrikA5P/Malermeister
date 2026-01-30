@@ -41,19 +41,107 @@ export class CryptoService {
     }
 
     /**
-     * DEV-MODE: Lädt einen unsicheren Hardcoded-Key für die Entwicklung.
-     * NIEMALS IN PRODUKTION VERWENDEN!
+     * DEV-MODE: Lädt einen temporären Key für die Entwicklung.
+     * KRITISCH: Nur für lokale Entwicklung - in Produktion deaktiviert.
      */
     public async loadDevKey(): Promise<void> {
-        const rawKey = new TextEncoder().encode('DEV_KEY_MUST_BE_32_BYTES_LONG_!!'); // 32 chars
+        // Sicherheitscheck: Nur in Entwicklungsumgebung erlauben
+        const isProduction = typeof window !== 'undefined' &&
+            window.location.hostname !== 'localhost' &&
+            !window.location.hostname.includes('127.0.0.1') &&
+            !window.location.hostname.includes('.local');
+
+        if (isProduction) {
+            console.error('🔒 CRYPTO: Dev-Key ist in Produktion nicht verfügbar!');
+            throw new Error('Dev-Key kann nicht in Produktionsumgebung geladen werden. ' +
+                           'Bitte authentifizieren Sie sich mit Ihrem Master-Passwort.');
+        }
+
+        // Generiere einen zufälligen temporären Key (nicht hardcoded!)
+        const tempKey = window.crypto.getRandomValues(new Uint8Array(32));
         this.masterKey = await window.crypto.subtle.importKey(
             'raw',
-            rawKey,
+            tempKey,
             ALGORITHM,
-            true,
+            false,  // Nicht extrahierbar
             ['encrypt', 'decrypt']
         );
-        console.warn('⚠️ CRYPTO: Dev-Key geladen. Daten sind NICHT sicher!');
+        console.warn('⚠️ CRYPTO: Temporärer Dev-Key geladen. Daten gehen bei Neustart verloren!');
+    }
+
+    /**
+     * Lädt einen Master-Key aus einem Passwort mittels PBKDF2
+     */
+    public async loadKeyFromPassword(password: string, salt?: Uint8Array): Promise<Uint8Array> {
+        const encoder = new TextEncoder();
+        const passwordBuffer = encoder.encode(password);
+
+        // Salt generieren oder verwenden
+        const keySalt = salt || window.crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+
+        // Passwort-Key importieren
+        const passwordKey = await window.crypto.subtle.importKey(
+            'raw',
+            passwordBuffer,
+            'PBKDF2',
+            false,
+            ['deriveBits', 'deriveKey']
+        );
+
+        // Master-Key mit PBKDF2 ableiten
+        this.masterKey = await window.crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: keySalt,
+                iterations: ITERATIONS,
+                hash: 'SHA-256'
+            },
+            passwordKey,
+            { name: ALGORITHM, length: KEY_LENGTH },
+            false,  // Nicht extrahierbar
+            ['encrypt', 'decrypt']
+        );
+
+        return keySalt;  // Salt muss für späteres Laden gespeichert werden
+    }
+
+    /**
+     * Verschlüsselt einen Blob (z.B. für Backup)
+     */
+    public async encryptBlob(blob: Blob): Promise<{ encryptedBlob: Blob; iv: string }> {
+        if (!this.masterKey) throw new Error('CryptoService not initialized');
+
+        const iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+        const arrayBuffer = await blob.arrayBuffer();
+
+        const encryptedBuffer = await window.crypto.subtle.encrypt(
+            { name: ALGORITHM, iv },
+            this.masterKey,
+            arrayBuffer
+        );
+
+        return {
+            encryptedBlob: new Blob([encryptedBuffer]),
+            iv: this.arrayBufferToBase64(iv)
+        };
+    }
+
+    /**
+     * Entschlüsselt einen Blob
+     */
+    public async decryptBlob(encryptedBlob: Blob, iv: string): Promise<Blob> {
+        if (!this.masterKey) throw new Error('CryptoService not initialized');
+
+        const ivArray = this.base64ToArrayBuffer(iv);
+        const encryptedBuffer = await encryptedBlob.arrayBuffer();
+
+        const decryptedBuffer = await window.crypto.subtle.decrypt(
+            { name: ALGORITHM, iv: ivArray },
+            this.masterKey,
+            encryptedBuffer
+        );
+
+        return new Blob([decryptedBuffer]);
     }
 
     /**
