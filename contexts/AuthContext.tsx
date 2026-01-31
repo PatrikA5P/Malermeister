@@ -56,41 +56,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const login = async (email: string, pass: string): Promise<boolean> => {
         setIsLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        if (email.includes('@') && pass.length > 0) {
-            const mockUser: AuthUser = {
-                id: 'u-dev-123',
-                email: email,
-                name: email.split('@')[0], 
-                companyId: 'tenant-dev',
-                role: 'owner'
-            };
-            const result = await setupSession(mockUser);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            if (email.includes('@') && pass.length > 0) {
+                const mockUser: AuthUser = {
+                    id: 'u-dev-123',
+                    email: email,
+                    name: email.split('@')[0], 
+                    companyId: 'tenant-dev',
+                    role: 'owner'
+                };
+                const result = await setupSession(mockUser);
+                return result;
+            }
+            return false;
+        } catch (error) {
+            console.error("Login failed:", error);
+            return false;
+        } finally {
             setIsLoading(false);
-            return result;
         }
-        
-        setIsLoading(false);
-        return false;
     };
 
     const loginWithProvider = async (provider: 'google' | 'apple'): Promise<boolean> => {
         setIsLoading(true);
-        // Simulation OAuth Redirect
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUser: AuthUser = {
-            id: `u-${provider}-123`,
-            email: `toni.borer@${provider}.com`,
-            name: 'Toni Borer',
-            companyId: 'tenant-dev',
-            role: 'owner'
-        };
-        
-        const result = await setupSession(mockUser);
-        setIsLoading(false);
-        return result;
+        try {
+            // Simulation OAuth Redirect
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const mockUser: AuthUser = {
+                id: `u-${provider}-123`,
+                email: `toni.borer@${provider}.com`,
+                name: 'Toni Borer',
+                companyId: 'tenant-dev',
+                role: 'owner'
+            };
+            
+            const result = await setupSession(mockUser);
+            return result;
+        } catch (error) {
+            console.error("Provider login failed:", error);
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const logout = () => {
