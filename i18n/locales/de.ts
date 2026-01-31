@@ -1,4 +1,4 @@
-{
+export default {
   "common": {
     "save": "Speichern",
     "cancel": "Abbrechen",
@@ -23,7 +23,6 @@
     "page": "Seite",
     "of": "von",
     "entries": "Einträgen",
-    "entry": "Eingang",
     "actions": "Aktionen",
     "status": "Status",
     "date": "Datum",
@@ -42,7 +41,6 @@
     "name": "Name",
     "number": "Nummer",
     "customer": "Kunde",
-    "supplier": "Lieferant",
     "project": "Projekt",
     "product": "Produkt",
     "quantity": "Menge",
@@ -54,13 +52,7 @@
     "tomorrow": "Morgen",
     "thisWeek": "Diese Woche",
     "thisMonth": "Dieser Monat",
-    "thisYear": "Dieses Jahr",
-    "positions": "Positionen",
-    "reference": "Referenz",
-    "category": "Kategorie",
-    "type": "Typ",
-    "unknown": "Unbekannt",
-    "export": "Export"
+    "thisYear": "Dieses Jahr"
   },
   "status": {
     "draft": "Entwurf",
@@ -114,48 +106,25 @@
   "purchasing": {
     "title": "Einkauf",
     "orders": "Bestellungen",
-    "order": "Bestellung",
     "ordersSubtitle": "Lieferantenbestellungen",
     "invoices": "Lieferantenrechnungen",
     "invoicesSubtitle": "Kreditorenbuchhaltung",
     "credits": "Gutschriften",
-    "credit": "Gutschrift",
     "creditsSubtitle": "Lieferantengutschriften",
-    "expenses": "Aufwendungen",
-    "expense": "Ausgabe",
+    "expenses": "Ausgaben",
     "expensesSubtitle": "Allgemeine Ausgaben",
     "employeeExpenses": "Spesen",
-    "employeeExpense": "Spese",
     "employeeExpensesSubtitle": "Mitarbeiterspesen",
     "newOrder": "Neue Bestellung",
     "newExpense": "Neue Ausgabe",
     "newEmployeeExpense": "Neue Spese",
-    "newSupplier": "Neuer Lieferant",
     "supplier": "Lieferant",
     "orderDate": "Bestelldatum",
     "deliveryDate": "Lieferdatum",
-    "receiptNumber": "Belegnummer",
-    "noOrders": "Keine Bestellungen",
-    "noInvoices": "Keine Rechnungen",
-    "noCredits": "Keine Gutschriften",
-    "noExpenses": "Keine Ausgaben",
-    "noEmployeeExpenses": "Keine Spesen",
-    "receipt": "Beleg",
-    "categoryMaterial": "Material",
-    "categoryTools": "Werkzeug",
-    "categoryVehicle": "Fahrzeug",
-    "categoryOffice": "Büro",
-    "categoryRent": "Miete",
-    "categoryAdvertising": "Werbung",
-    "supplierPlaceholder": "Lieferant (z.B. Bauhaus)",
-    "amountGross": "Betrag Brutto",
-    "employee": "Mitarbeiter",
-    "management": "Geschäftsleitung",
-    "expenseDescriptionPlaceholder": "Beschreibung (z.B. Mittagessen Kunde X)"
+    "receiptNumber": "Belegnummer"
   },
   "finance": {
-    "title": "Buchhaltung",
-    "subtitle": "Finanzübersicht",
+    "title": "Finanzen",
     "journal": "Journal",
     "journalSubtitle": "Buchungsjournal",
     "balance": "Bilanz",
@@ -165,37 +134,11 @@
     "bank": "Bank",
     "bankSubtitle": "Kontoabgleich",
     "accounts": "Kontenplan",
-    "accountSheet": "Kontenblatt",
     "bookings": "Buchungen",
     "reconciliation": "Abstimmung",
     "matchPayment": "Zahlung zuordnen",
     "importTransactions": "Transaktionen importieren",
     "camtImport": "CAMT Import"
-  },
-  "bank": {
-    "counterparty": "Gegenseite",
-    "reference": "Referenz",
-    "booked": "Verbucht",
-    "partialPayment": "Teilzahlung",
-    "ignored": "Ignoriert",
-    "openSum": "Offene Summe",
-    "noTransactions": "Keine Transaktionen",
-    "noDuplicates": "Keine neuen Transaktionen gefunden (Duplikate)",
-    "importedCount": "{{count}} neue Transaktionen importiert",
-    "assignPayment": "Zahlung Zuweisen",
-    "from": "Von",
-    "possibleInvoices": "Mögliche Rechnungen",
-    "noMatchingInvoices": "Keine passenden Rechnungen gefunden",
-    "noMatchingInvoicesHint": "Betrag stimmt mit keiner offenen Rechnung überein",
-    "ignore": "Ignorieren",
-    "matchExact": "Exakt",
-    "matchQR": "QR-Match",
-    "matchTolerance": "Toleranz",
-    "matchPartial": "Teilzahlung",
-    "matchSkonto": "Skonto",
-    "partiallyPaid": "teilbezahlt",
-    "remainingAmount": "Restbetrag",
-    "transactionIgnored": "Transaktion ignoriert"
   },
   "crm": {
     "title": "Kontakte",
@@ -237,8 +180,8 @@
     "minStock": "Mindestbestand"
   },
   "projects": {
-    "title": "Aufträge",
-    "subtitle": "Projektmanagement",
+    "title": "Projekte",
+    "subtitle": "Projektverwaltung",
     "newProject": "Neues Projekt",
     "projectName": "Projektname",
     "projectNumber": "Projektnummer",
@@ -248,13 +191,7 @@
     "progress": "Fortschritt",
     "tasks": "Aufgaben",
     "timeTracking": "Zeiterfassung",
-    "materials": "Materialien",
-    "revenue": "Ertrag",
-    "cost": "Aufwand",
-    "margin": "Marge",
-    "noProjects": "Keine Projekte gefunden",
-    "exportComplete": "Export fertig",
-    "statusPlanning": "Planung"
+    "materials": "Materialien"
   },
   "settings": {
     "title": "Einstellungen",
@@ -357,8 +294,7 @@
     "deleted": "Gelöscht",
     "sent": "Gesendet",
     "copied": "Kopiert",
-    "error": "Fehler",
-    "duplicated": "Dupliziert"
+    "error": "Fehler"
   },
   "units": {
     "piece": "Stück",
@@ -375,4 +311,4 @@
     "set": "Set",
     "flat": "Pauschale"
   }
-}
+};
