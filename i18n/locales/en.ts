@@ -1,4 +1,4 @@
-{
+export default {
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -311,4 +311,4 @@
     "set": "Set",
     "flat": "Flat Rate"
   }
-}
+};
