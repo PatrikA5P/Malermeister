@@ -1,3 +1,4 @@
+
 /**
  * DataDisplay - Responsive Data Display Component
  *
@@ -63,6 +64,15 @@ export interface DataDisplayProps<T> {
     forceView?: 'table' | 'cards';
 }
 
+interface DefaultCardProps<T> {
+    row: T;
+    columns: DataDisplayColumn<T>[];
+    rowKey: keyof T;
+    isSelected?: boolean;
+    onSelect?: (id: string | number) => void;
+    onClick?: (row: T) => void;
+}
+
 /**
  * Default card renderer using column configuration
  */
@@ -73,14 +83,7 @@ function DefaultCard<T extends Record<string, any>>({
     isSelected,
     onSelect,
     onClick
-}: {
-    row: T;
-    columns: DataDisplayColumn<T>[];
-    rowKey: keyof T;
-    isSelected?: boolean;
-    onSelect?: (id: string | number) => void;
-    onClick?: (row: T) => void;
-}) {
+}: DefaultCardProps<T>) {
     // Find columns by card position
     const titleCol = columns.find(c => c.cardPosition === 'title') || columns[0];
     const subtitleCol = columns.find(c => c.cardPosition === 'subtitle');
@@ -277,15 +280,16 @@ export function DataDisplay<T extends Record<string, any>>({
                             }
 
                             return (
-                                <DefaultCard
-                                    key={String(id)}
-                                    row={row}
-                                    columns={columns}
-                                    rowKey={rowKey}
-                                    isSelected={isSelected}
-                                    onSelect={onSelectRow}
-                                    onClick={onRowClick}
-                                />
+                                <React.Fragment key={String(id)}>
+                                    <DefaultCard
+                                        row={row}
+                                        columns={columns}
+                                        rowKey={rowKey}
+                                        isSelected={isSelected}
+                                        onSelect={onSelectRow}
+                                        onClick={onRowClick}
+                                    />
+                                </React.Fragment>
                             );
                         })}
 
