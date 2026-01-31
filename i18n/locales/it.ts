@@ -1,4 +1,4 @@
-{
+export default {
   "common": {
     "save": "Salva",
     "cancel": "Annulla",
@@ -311,4 +311,4 @@
     "set": "Set",
     "flat": "Forfettario"
   }
-}
+};
