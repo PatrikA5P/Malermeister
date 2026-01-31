@@ -1,4 +1,4 @@
-{
+export default {
   "common": {
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -311,4 +311,4 @@
     "set": "Ensemble",
     "flat": "Forfait"
   }
-}
+};
