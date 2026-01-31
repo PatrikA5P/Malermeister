@@ -112,7 +112,7 @@ const LARGE_TABLE_DATA = Array.from({ length: 123 }).map((_, i) => {
 /* SECTION HELPER                      */
 /* ---------------------------------- */
 
-const FileSection = ({ filename, children }: { filename: string; children: React.ReactNode }) => (
+const FileSection = ({ filename, children }: { filename: string; children?: React.ReactNode }) => (
   <section className="mb-20 border border-zinc-200 rounded-3xl overflow-hidden shadow-sm bg-white">
     <div className="bg-zinc-100 px-6 py-4 border-b border-zinc-200 flex justify-between items-center">
       <code className="text-sm font-bold text-zinc-600 bg-white px-3 py-1 rounded border border-zinc-200 font-mono">
