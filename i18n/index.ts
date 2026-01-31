@@ -5,10 +5,11 @@
  * Supports: German (de), English (en), French (fr), Italian (it)
  */
 
-import de from './locales/de.json';
-import en from './locales/en.json';
-import fr from './locales/fr.json';
-import it from './locales/it.json';
+// Import from TypeScript files now
+import de from './locales/de';
+import en from './locales/en';
+import fr from './locales/fr';
+import it from './locales/it';
 
 export type SupportedLanguage = 'de' | 'en' | 'fr' | 'it';
 
@@ -19,7 +20,12 @@ export const LANGUAGES: Record<SupportedLanguage, { name: string; nativeName: st
     it: { name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' }
 };
 
-const translations: Record<SupportedLanguage, Record<string, any>> = { de, en, fr, it };
+const translations: Record<SupportedLanguage, Record<string, any>> = { 
+    de, 
+    en, 
+    fr, 
+    it 
+};
 
 let currentLanguage: SupportedLanguage = 'de';
 const listeners: Set<() => void> = new Set();
